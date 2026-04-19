@@ -1,0 +1,4329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GYM MASTER | Panel de Control</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg: #0f1010;
+  --sidebar-bg: #141717;
+  --sidebar-border: rgba(127,255,0,0.10);
+  --accent: #7fff00;
+  --accent2: #4caf50;
+  --surface: #1a1d1a;
+  --surface2: #222522;
+  --border: rgba(255,255,255,0.07);
+  --text: #e8ede8;
+  --text-muted: #7a8a7a;
+  --danger: #ff4444;
+  --warning: #ffaa00;
+  --info: #00c8ff;
+  --sidebar-w: 240px;
+  --sidebar-w-collapsed: 60px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Barlow', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+}
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+  width: var(--sidebar-w);
+  min-height: 100vh;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  z-index: 100;
+  transition: width .25s ease;
+  overflow: hidden;
+}
+.sidebar.collapsed { width: var(--sidebar-w-collapsed); }
+
+.sidebar-logo {
+  padding: 20px 16px;
+  border-bottom: 1px solid var(--sidebar-border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+}
+.sidebar-logo-icon {
+  width: 36px; height: 36px;
+  background: var(--accent);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-size: 1rem;
+  color: #0a0a0a;
+}
+.sidebar-logo-text {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--accent);
+  letter-spacing: .04em;
+  transition: opacity .2s;
+}
+.sidebar.collapsed .sidebar-logo-text { opacity: 0; }
+
+.sidebar-toggle {
+  width: 32px; height: 32px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: .9rem;
+}
+.sidebar.collapsed .sidebar-toggle { margin: 0; }
+
+nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 10px 0; }
+nav::-webkit-scrollbar { width: 3px; }
+nav::-webkit-scrollbar-thumb { background: var(--sidebar-border); border-radius: 3px; }
+
+.nav-section {
+  padding: 6px 16px 3px;
+  font-size: .65rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity .2s;
+}
+.sidebar.collapsed .nav-section { opacity: 0; }
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 16px;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: all .15s;
+  white-space: nowrap;
+  position: relative;
+}
+.nav-item:hover { color: var(--text); background: rgba(127,255,0,.05); }
+.nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(127,255,0,.08); }
+.nav-item i { width: 18px; text-align: center; font-style: normal; font-size: 1rem; flex-shrink: 0; }
+.nav-item span { transition: opacity .2s; }
+.sidebar.collapsed .nav-item span { opacity: 0; }
+.sidebar.collapsed .nav-item { justify-content: center; padding: 9px; }
+
+.nav-sub { padding-left: 28px; overflow: hidden; max-height: 0; transition: max-height .2s; }
+.nav-sub.open { max-height: 200px; }
+.nav-sub .nav-item { font-size: .85rem; padding: 7px 14px; gap: 8px; }
+.sidebar.collapsed .nav-sub { display: none; }
+.nav-arrow { margin-left: auto; font-style: normal; font-size: .7rem; transition: transform .2s; }
+.nav-arrow.open { transform: rotate(90deg); }
+
+/* ===== MAIN ===== */
+.main {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  min-height: 100vh;
+  transition: margin-left .25s;
+}
+.sidebar.collapsed ~ .main { margin-left: var(--sidebar-w-collapsed); }
+
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  position: sticky; top: 0; z-index: 50;
+}
+.topbar-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.topbar-right { display: flex; align-items: center; gap: 14px; }
+.welcome-chip {
+  background: rgba(127,255,0,.1);
+  border: 1px solid rgba(127,255,0,.2);
+  color: var(--accent);
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: .8rem;
+  font-weight: 600;
+}
+.btn-logout {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: .82rem;
+}
+.btn-logout:hover { color: var(--danger); border-color: var(--danger); }
+
+.content { padding: 28px; }
+
+/* ===== SCREENS ===== */
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* LOGIN */
+#screen-login {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 30% 50%, rgba(127,255,0,.06) 0%, transparent 60%), var(--bg);
+  flex-direction: column;
+  gap: 28px;
+}
+.login-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 40px;
+  width: 360px;
+  max-width: 95vw;
+  box-shadow: 0 30px 80px rgba(0,0,0,.5);
+}
+.login-logo {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.login-logo-icon {
+  width: 64px; height: 64px;
+  background: var(--accent);
+  border-radius: 18px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-size: 1.5rem;
+  color: #0a0a0a;
+  margin-bottom: 14px;
+}
+.login-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.login-sub { color: var(--text-muted); font-size: .85rem; margin-top: 4px; }
+
+/* FORMS */
+.form-group { margin-bottom: 18px; }
+.form-group label {
+  display: block;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 7px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.form-control {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-family: 'Barlow', sans-serif;
+  font-size: .9rem;
+  transition: border-color .15s;
+  outline: none;
+}
+.form-control:focus { border-color: var(--accent); }
+select.form-control option { background: var(--surface2); }
+textarea.form-control { resize: vertical; min-height: 80px; }
+
+/* BUTTONS */
+.btn {
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-family: 'Barlow', sans-serif;
+  font-weight: 600;
+  font-size: .88rem;
+  cursor: pointer;
+  border: none;
+  transition: all .15s;
+  display: inline-flex; align-items: center; gap: 7px;
+}
+.btn-primary { background: var(--accent); color: #0a0a0a; }
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.btn-danger { background: rgba(255,68,68,.15); color: var(--danger); border: 1px solid rgba(255,68,68,.3); }
+.btn-danger:hover { background: rgba(255,68,68,.25); }
+.btn-warning { background: rgba(255,170,0,.15); color: var(--warning); border: 1px solid rgba(255,170,0,.3); }
+.btn-sm { padding: 6px 12px; font-size: .8rem; }
+.btn-full { width: 100%; justify-content: center; }
+
+/* STATS GRID */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  margin-bottom: 28px;
+}
+@media(max-width:1100px){ .stats-grid { grid-template-columns: repeat(2,1fr); } }
+@media(max-width:600px){ .stats-grid { grid-template-columns: 1fr; } }
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s;
+}
+.stat-card:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+.stat-card::before {
+  content: '';
+  position: absolute;
+  right: -20px; top: -20px;
+  width: 100px; height: 100px;
+  border-radius: 50%;
+  opacity: .08;
+}
+.stat-card.red::before { background: #ff4444; }
+.stat-card.green::before { background: var(--accent); }
+.stat-card.aqua::before { background: var(--info); }
+.stat-card.blue::before { background: #4488ff; }
+.stat-card.red { border-left: 3px solid #ff4444; }
+.stat-card.green { border-left: 3px solid var(--accent); }
+.stat-card.aqua { border-left: 3px solid var(--info); }
+.stat-card.blue { border-left: 3px solid #4488ff; }
+.stat-icon {
+  position: absolute;
+  right: 18px; top: 18px;
+  font-size: 2.2rem;
+  opacity: .25;
+}
+.stat-label {
+  font-size: .75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.stat-value {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+}
+.stat-card.green .stat-value { color: var(--accent); }
+
+/* HERO BANNER */
+.dashboard-hero {
+  background: linear-gradient(135deg, #141717 0%, #1a2219 60%, #202820 100%);
+  border: 1px solid rgba(127,255,0,.14);
+  border-radius: 20px;
+  padding: 28px;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.hero-tag {
+  display: inline-flex;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(127,255,0,.1);
+  border: 1px solid rgba(127,255,0,.2);
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+.hero-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 2rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 8px;
+}
+.hero-desc { color: rgba(255,255,255,.7); font-size: .9rem; max-width: 600px; }
+.hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* CARD */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.card-header {
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.card-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.card-body { padding: 22px; }
+
+/* TABLE */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .87rem; }
+th {
+  background: var(--surface2);
+  color: var(--text-muted);
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  padding: 11px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: middle;
+}
+tr:hover td { background: rgba(255,255,255,.02); }
+tr:last-child td { border-bottom: none; }
+.td-actions { display: flex; gap: 7px; }
+
+/* BADGES */
+.badge {
+  display: inline-flex;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 700;
+}
+.badge-green { background: rgba(127,255,0,.12); color: var(--accent); border: 1px solid rgba(127,255,0,.2); }
+.badge-red { background: rgba(255,68,68,.12); color: #ff7070; border: 1px solid rgba(255,68,68,.2); }
+.badge-yellow { background: rgba(255,170,0,.12); color: var(--warning); border: 1px solid rgba(255,170,0,.2); }
+
+/* FORM CARD */
+.form-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  max-width: 640px;
+}
+.form-card-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media(max-width:600px){ .form-grid { grid-template-columns: 1fr; } }
+.form-grid .full { grid-column: 1/-1; }
+.form-actions { display: flex; gap: 10px; margin-top: 22px; }
+
+/* ALERT */
+.alert {
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: .87rem;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.alert-success { background: rgba(127,255,0,.1); border: 1px solid rgba(127,255,0,.2); color: var(--accent); }
+.alert-error { background: rgba(255,68,68,.1); border: 1px solid rgba(255,68,68,.2); color: #ff7070; }
+.alert { display: none; }
+.alert.show { display: flex; }
+
+/* MODAL */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.7);
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 28px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal h3 {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin-bottom: 20px;
+  color: var(--text);
+}
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+
+/* SPINNER */
+.spinner {
+  display: inline-block;
+  width: 20px; height: 20px;
+  border: 2px solid rgba(127,255,0,.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* LOADING OVERLAY */
+.loading-overlay {
+  position: fixed; inset: 0;
+  background: rgba(15,16,16,.9);
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.loading-overlay.hidden { display: none; }
+.loading-overlay p { color: var(--text-muted); font-size: .9rem; }
+
+/* CHIP INFO */
+.info-chip {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 14px;
+}
+.info-chip-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); }
+.info-chip-value { font-size: .95rem; color: var(--text); margin-top: 3px; }
+
+/* EMPTY STATE */
+.empty-state {
+  text-align: center;
+  padding: 50px 20px;
+  color: var(--text-muted);
+}
+.empty-state-icon { font-size: 3rem; margin-bottom: 14px; opacity: .4; }
+.empty-state p { font-size: .9rem; }
+
+/* SEARCH BAR */
+.search-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.search-bar .form-control { max-width: 280px; }
+
+/* INVOICE */
+.invoice-box {
+  background: #fff;
+  color: #222;
+  padding: 30px;
+  border-radius: 12px;
+  max-width: 600px;
+  font-family: 'Barlow', sans-serif;
+}
+.invoice-header { display: flex; justify-content: space-between; margin-bottom: 24px; }
+.invoice-logo { font-family: 'Barlow Condensed', sans-serif; font-size: 1.5rem; font-weight: 800; color: #2a2a2a; }
+.invoice-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: .9rem; }
+.invoice-total { font-weight: 800; font-size: 1rem; margin-top: 12px; }
+
+/* ===== AI RESULT STYLES ===== */
+.ai-header {
+  background: linear-gradient(135deg, rgba(127,255,0,.1), rgba(127,255,0,.03));
+  border: 1px solid rgba(127,255,0,.25);
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+.ai-header-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.ai-header-desc { color: var(--text-muted); font-size: .88rem; line-height: 1.5; }
+
+.ai-day-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.ai-day-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(127,255,0,.07);
+  border-bottom: 1px solid var(--border);
+}
+.ai-day-badge {
+  background: var(--accent);
+  color: #0a0a0a;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-size: .8rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.ai-day-title {
+  font-weight: 700;
+  font-size: .95rem;
+  color: var(--text);
+}
+.ai-day-body { padding: 12px 16px; }
+.ai-exercise-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  font-size: .87rem;
+  line-height: 1.5;
+}
+.ai-exercise-item:last-child { border-bottom: none; }
+.ai-check {
+  width: 20px; height: 20px;
+  border: 2px solid rgba(127,255,0,.3);
+  border-radius: 6px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all .15s;
+}
+.ai-check:hover { border-color: var(--accent); background: rgba(127,255,0,.1); }
+.ai-check.checked { background: var(--accent); border-color: var(--accent); }
+.ai-check.checked::after { content: '✓'; font-size: .7rem; color: #0a0a0a; font-weight: 900; }
+.ai-exercise-text { flex: 1; color: var(--text); }
+.ai-exercise-text strong { color: var(--accent); }
+
+.ai-tip-card {
+  background: rgba(0,200,255,.06);
+  border: 1px solid rgba(0,200,255,.15);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+.ai-tip-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--info); margin-bottom: 8px; }
+.ai-tip-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: .86rem; color: var(--text); padding: 4px 0;
+  border-bottom: 1px solid rgba(0,200,255,.08);
+}
+.ai-tip-item:last-child { border-bottom: none; }
+.ai-tip-dot { color: var(--info); flex-shrink: 0; margin-top: 2px; }
+
+.ai-cal-card {
+  background: rgba(255,170,0,.08);
+  border: 1px solid rgba(255,170,0,.2);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex; align-items: center; gap: 14px;
+}
+.ai-cal-icon { font-size: 2rem; }
+.ai-cal-value { font-family: 'Barlow Condensed',sans-serif; font-size: 1.6rem; font-weight: 800; color: var(--warning); }
+.ai-cal-label { font-size: .78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
+
+/* Nutricion */
+.ai-meal-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.ai-meal-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 16px;
+  background: rgba(127,255,0,.05);
+  border-bottom: 1px solid var(--border);
+}
+.ai-meal-day {
+  font-family: 'Barlow Condensed',sans-serif;
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--accent);
+}
+.ai-meal-body { padding: 10px 16px; }
+.ai-meal-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  font-size: .85rem;
+}
+.ai-meal-row:last-child { border-bottom: none; }
+.ai-meal-time {
+  min-width: 90px;
+  font-weight: 700;
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  padding-top: 2px;
+}
+.ai-meal-time.desayuno { color: #ffcc44; }
+.ai-meal-time.almuerzo { color: #44ccff; }
+.ai-meal-time.merienda { color: #ff9944; }
+.ai-meal-time.cena { color: #aa88ff; }
+.ai-meal-desc { color: var(--text); flex: 1; line-height: 1.5; }
+
+.ai-macros-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px; margin-bottom: 14px;
+}
+.ai-macro-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  text-align: center;
+}
+.ai-macro-value { font-family: 'Barlow Condensed',sans-serif; font-size: 1.3rem; font-weight: 800; margin-bottom: 4px; }
+.ai-macro-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); }
+.ai-cal-total {
+  background: linear-gradient(135deg, rgba(255,170,0,.12), rgba(255,170,0,.04));
+  border: 1px solid rgba(255,170,0,.25);
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.ai-sup-card {
+  background: rgba(255,170,0,.06);
+  border: 1px solid rgba(255,170,0,.15);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+.ai-sup-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--warning); margin-bottom: 8px; }
+.ai-sup-item { display:flex; gap:8px; font-size:.86rem; color:var(--text); padding:4px 0; border-bottom:1px solid rgba(255,170,0,.08); }
+.ai-sup-item:last-child { border-bottom:none; }
+.ai-water-card {
+  background: rgba(0,200,255,.06);
+  border: 1px solid rgba(0,200,255,.15);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 12px;
+  font-size: .88rem; color: var(--text);
+}
+
+/* ===== FLOATING ACTION BUTTON ===== */
+.fab {
+  position: fixed;
+  bottom: 24px;
+  right: 20px;
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #7fff00, #4caf50);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(127,255,0,.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  z-index: 90;
+  transition: all .2s;
+  color: #0a0a0a;
+}
+.fab:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 12px 32px rgba(127,255,0,.5); }
+.fab:active { transform: scale(.95); }
+.fab-label {
+  position: fixed;
+  bottom: 32px;
+  right: 86px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: .8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s;
+  z-index: 90;
+}
+.fab:hover + .fab-label { opacity: 1; }
+
+/* ===== MEJORAS GENERALES UI ===== */
+.card-header { gap: 10px; flex-wrap: wrap; }
+.topbar { min-height: 58px; }
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  :root { --sidebar-w: 52px; --sidebar-w-collapsed: 52px; }
+  .sidebar { width: 52px !important; }
+  .sidebar .sidebar-logo-text, .sidebar .nav-item span, .sidebar .nav-section, .sidebar .nav-sub, .sidebar .nav-arrow, .sidebar .sidebar-toggle { display: none !important; }
+  .sidebar .nav-item { justify-content: center; padding: 13px 0; min-height: 48px; width: 52px; }
+  .sidebar .nav-item i { font-size: 1.3rem; }
+  .sidebar .sidebar-logo { justify-content: center; padding: 14px 0; }
+  .main { margin-left: 52px !important; width: calc(100vw - 52px) !important; }
+  .topbar { padding: 10px 12px; flex-wrap: wrap; gap: 6px; }
+  .topbar-title { font-size: 1rem; }
+  .welcome-chip { font-size: .7rem; padding: 4px 8px; }
+  .btn-logout { font-size: .72rem; padding: 5px 9px; }
+  .content { padding: 12px; }
+  .dashboard-hero { flex-direction: column; align-items: flex-start; padding: 16px; }
+  .hero-title { font-size: 1.4rem; }
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-card { padding: 14px; max-width: 100%; }
+  .form-grid { grid-template-columns: 1fr; }
+  .modal { padding: 16px; width: 95vw; }
+  table { font-size: .78rem; }
+  th, td { padding: 8px 9px; }
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner" style="width:36px;height:36px;border-width:3px;"></div>
+  <p>Cargando...</p>
+</div>
+
+<!-- ===== LOGIN ===== -->
+<div id="screen-login" class="screen active" style="display:flex; margin:0; width:100%; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; background:radial-gradient(ellipse at 30% 50%, rgba(127,255,0,.06) 0%, transparent 60%), var(--bg); gap:20px; padding:20px;">
+
+  <!-- Tabs login / acceso -->
+  <div style="display:flex;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;width:100%;max-width:380px;">
+    <button id="tabAdmin" onclick="switchTab('admin')" style="flex:1;padding:11px;background:var(--accent);color:#0a0a0a;font-weight:700;border:none;cursor:pointer;font-size:.9rem;transition:all .2s;">👤 Admin</button>
+    <button id="tabAcceso" onclick="switchTab('acceso')" style="flex:1;padding:11px;background:transparent;color:var(--text-muted);font-weight:700;border:none;cursor:pointer;font-size:.9rem;transition:all .2s;">🔑 Acceso</button>
+  </div>
+
+  <!-- Panel Admin -->
+  <div id="panelAdmin" class="login-box" style="width:100%;max-width:380px;">
+    <div class="login-logo">
+      <div class="login-logo-icon">GM</div>
+      <div class="login-title">GYM MASTER</div>
+      <div class="login-sub">Panel de Administración</div>
+    </div>
+    <div id="loginAlert" class="alert alert-error">⚠ Usuario o contraseña incorrectos</div>
+    <div class="form-group">
+      <label>Usuario</label>
+      <input type="text" class="form-control" id="loginUser" placeholder="admin" value="admin">
+    </div>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <input type="password" class="form-control" id="loginPass" placeholder="••••••" value="">
+    </div>
+    <button class="btn btn-primary btn-full" onclick="doLogin()">Ingresar</button>
+  </div>
+
+  <!-- Panel Acceso / SINPE -->
+  <div id="panelAcceso" class="login-box" style="width:100%;max-width:380px;display:none;">
+    <div class="login-logo">
+      <div class="login-logo-icon" style="background:var(--warning);font-size:1.2rem;">💳</div>
+      <div class="login-title">Obtén tu Acceso</div>
+      <div class="login-sub">Pago único — Sin mensualidades</div>
+    </div>
+
+    <!-- Precio destacado -->
+    <div style="background:linear-gradient(135deg,rgba(127,255,0,.12),rgba(127,255,0,.04));border:1px solid rgba(127,255,0,.25);border-radius:14px;padding:18px;text-align:center;margin-bottom:18px;">
+      <div style="font-size:.8rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);margin-bottom:6px;">Precio especial</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:2.8rem;font-weight:800;color:var(--accent);line-height:1;">₡7,000</div>
+      <div style="font-size:.82rem;color:var(--text-muted);margin-top:4px;">Pago único · Acceso completo</div>
+    </div>
+
+    <!-- Qué incluye -->
+    <div style="margin-bottom:18px;">
+      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:10px;">✅ Incluye</div>
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <div style="display:flex;align-items:center;gap:8px;font-size:.85rem;"><span style="color:var(--accent)">✓</span> Registro y gestión de miembros</div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:.85rem;"><span style="color:var(--accent)">✓</span> Control de pagos y vencimientos</div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:.85rem;"><span style="color:var(--accent)">✓</span> Rutinas generadas con IA</div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:.85rem;"><span style="color:var(--accent)">✓</span> Plan nutricional con IA</div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:.85rem;"><span style="color:var(--accent)">✓</span> Detector de comidas con cámara</div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:.85rem;"><span style="color:var(--accent)">✓</span> Reportes y estadísticas</div>
+      </div>
+    </div>
+
+    <!-- SINPE -->
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px;text-align:center;">
+      <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:10px;">📱 Pagar por SINPE Móvil</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:2rem;font-weight:800;color:var(--accent);letter-spacing:.05em;">7008-2741</div>
+      <div style="font-size:.8rem;color:var(--text-muted);margin-top:4px;">Monto: <strong style="color:var(--warning)">₡7,000</strong></div>
+      <button onclick="copiarSINPE()" style="margin-top:10px;background:rgba(127,255,0,.1);border:1px solid rgba(127,255,0,.2);color:var(--accent);padding:7px 18px;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:700;">📋 Copiar número</button>
+    </div>
+
+    <!-- Mensaje comprobante -->
+    <div style="background:rgba(0,200,255,.06);border:1px solid rgba(0,200,255,.15);border-radius:12px;padding:14px;font-size:.83rem;color:var(--text);line-height:1.6;margin-bottom:16px;">
+      💬 <strong>Después de pagar:</strong> Enviá el comprobante por WhatsApp al <strong style="color:var(--accent)">7202-8728</strong> y en menos de 24 horas recibís tus credenciales de acceso.
+    </div>
+
+    <a href="https://wa.me/50672028728?text=Hola,%20realicé%20el%20pago%20de%20₡7,000%20por%20SINPE%20para%20GYM%20MASTER%20y%20adjunto%20el%20comprobante." target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;background:#25d366;color:#fff;font-weight:700;padding:12px;border-radius:10px;text-decoration:none;font-size:.9rem;">
+      <span style="font-size:1.1rem">💬</span> Enviar comprobante por WhatsApp
+    </a>
+  </div>
+
+</div>
+
+<!-- ===== APP ===== -->
+<div id="appShell" style="display:none; width:100%; min-height:100vh;">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">GM</div>
+      <span class="sidebar-logo-text">GYM MASTER</span>
+      <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+    </div>
+    <nav>
+      <div class="nav-section">PRINCIPAL</div>
+      <div class="nav-item active" onclick="showScreen('dashboard')" data-screen="dashboard">
+        <i>📊</i><span>Panel de Control</span>
+      </div>
+
+      <div class="nav-section">GESTIÓN</div>
+      <div class="nav-item" onclick="showScreen('nuevo-registro')" data-screen="nuevo-registro">
+        <i>➕</i><span>Nuevo Registro</span>
+      </div>
+      <div class="nav-item" onclick="showScreen('pagos')" data-screen="pagos">
+        <i>💳</i><span>Pagos</span>
+      </div>
+
+      <div class="nav-item" onclick="toggleSub('subMembers')">
+        <i>👥</i><span>Miembros</span><i class="nav-arrow" id="arrowMembers">›</i>
+      </div>
+      <div class="nav-sub" id="subMembers">
+        <div class="nav-item" onclick="showScreen('editar-miembros')" data-screen="editar-miembros"><i>✏️</i><span>Editar Miembros</span></div>
+        <div class="nav-item" onclick="showScreen('ver-miembros')" data-screen="ver-miembros"><i>👁</i><span>Ver Miembros</span></div>
+      </div>
+
+      <div class="nav-item" onclick="showScreen('estado-salud')" data-screen="estado-salud">
+        <i>❤️</i><span>Estado de Salud</span>
+      </div>
+
+      <div class="nav-item" onclick="toggleSub('subPlanes')">
+        <i>📋</i><span>Planes</span><i class="nav-arrow" id="arrowPlanes">›</i>
+      </div>
+      <div class="nav-sub" id="subPlanes">
+        <div class="nav-item" onclick="showScreen('nuevo-plan')" data-screen="nuevo-plan"><i>➕</i><span>Nuevo Plan</span></div>
+        <div class="nav-item" onclick="showScreen('ver-planes')" data-screen="ver-planes"><i>📄</i><span>Ver Planes</span></div>
+      </div>
+
+      <div class="nav-item" onclick="toggleSub('subOverview')">
+        <i>📈</i><span>Vista General</span><i class="nav-arrow" id="arrowOverview">›</i>
+      </div>
+      <div class="nav-sub" id="subOverview">
+        <div class="nav-item" onclick="showScreen('miembros-mes')" data-screen="miembros-mes"><i>📅</i><span>Miembros por Mes</span></div>
+        <div class="nav-item" onclick="showScreen('miembros-anio')" data-screen="miembros-anio"><i>📅</i><span>Miembros por Año</span></div>
+        <div class="nav-item" onclick="showScreen('ingresos-mes')" data-screen="ingresos-mes"><i>💰</i><span>Ingresos por Mes</span></div>
+      </div>
+
+      <div class="nav-item" onclick="toggleSub('subRutinas')">
+        <i>🏋️</i><span>Rutinas</span><i class="nav-arrow" id="arrowRutinas">›</i>
+      </div>
+      <div class="nav-sub" id="subRutinas">
+        <div class="nav-item" onclick="showScreen('agregar-rutina')" data-screen="agregar-rutina"><i>➕</i><span>Agregar Rutina</span></div>
+        <div class="nav-item" onclick="showScreen('rutina-ia')" data-screen="rutina-ia"><i>🤖</i><span>Rutina con IA</span></div>
+        <div class="nav-item" onclick="showScreen('nutricion-ia')" data-screen="nutricion-ia"><i>🥗</i><span>Nutrición IA</span></div>
+        <div class="nav-item" onclick="showScreen('detector-comida')" data-screen="detector-comida"><i>📸</i><span>Detector Comidas</span></div>
+        <div class="nav-item" onclick="showScreen('editar-rutina')" data-screen="editar-rutina"><i>✏️</i><span>Editar Rutina</span></div>
+        <div class="nav-item" onclick="showScreen('ver-rutinas')" data-screen="ver-rutinas"><i>👁</i><span>Ver Rutinas</span></div>
+      </div>
+
+      <div class="nav-section">CUENTA</div>
+      <div class="nav-item" onclick="showScreen('clientes-acceso')" data-screen="clientes-acceso">
+        <i>🔑</i><span>Accesos Clientes</span>
+      </div>
+      <div class="nav-item" onclick="showScreen('perfil')" data-screen="perfil">
+        <i>👤</i><span>Perfil</span>
+      </div>
+      <div class="nav-item" onclick="doLogout()">
+        <i>🚪</i><span>Cerrar Sesión</span>
+      </div>
+    </nav>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main" id="mainArea">
+    <div class="topbar">
+      <div class="topbar-title" id="topbarTitle">Panel de Control</div>
+      <div class="topbar-right">
+        <span class="welcome-chip" id="welcomeChip">Bienvenid@ Admin</span>
+        <button class="btn-logout" onclick="doLogout()">Cerrar Sesión ↪</button>
+      </div>
+    </div>
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div id="screen-dashboard" class="screen active">
+        <div class="dashboard-hero">
+          <div>
+            <div class="hero-tag">Resumen general</div>
+            <div class="hero-title">Panel de control del gimnasio</div>
+            <div class="hero-desc">Consulta rápidamente los ingresos, altas de usuarios y estado de los planes disponibles.</div>
+          </div>
+          <div class="hero-actions">
+            <button class="btn btn-primary" onclick="showScreen('nuevo-registro')">➕ Nuevo registro</button>
+            <button class="btn btn-secondary" onclick="showScreen('pagos')">💳 Registrar pago</button>
+            <button class="btn btn-secondary" onclick="showScreen('ver-planes')">📋 Gestionar planes</button>
+            <button class="btn btn-secondary" onclick="showScreen('detector-comida')" style="border-color:rgba(255,170,0,.4);color:var(--warning);">📸 Detector de Comidas</button>
+          </div>
+        </div>
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card red" onclick="showScreen('ingresos-mes')">
+            <span class="stat-icon">💳</span>
+            <div class="stat-label">Dinero recibido este mes</div>
+            <div class="stat-value" id="statIngresos">...</div>
+          </div>
+          <div class="stat-card green" onclick="showScreen('ver-miembros')">
+            <span class="stat-icon">👥</span>
+            <div class="stat-label">Miembros totales</div>
+            <div class="stat-value" id="statMiembros">...</div>
+          </div>
+          <div class="stat-card aqua" onclick="showScreen('miembros-mes')">
+            <span class="stat-icon">📅</span>
+            <div class="stat-label">Nuevos este mes</div>
+            <div class="stat-value" id="statNuevos">...</div>
+          </div>
+          <div class="stat-card blue" onclick="showScreen('ver-planes')">
+            <span class="stat-icon">📋</span>
+            <div class="stat-label">Planes activos</div>
+            <div class="stat-value" id="statPlanes">...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NUEVO REGISTRO -->
+      <div id="screen-nuevo-registro" class="screen">
+        <div class="form-card">
+          <div class="form-card-title">Ingreso de Nuevo Usuario</div>
+          <div id="alertNuevo" class="alert"></div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>ID Membresía</label>
+              <input type="text" class="form-control" id="nr_mid" readonly>
+            </div>
+            <div class="form-group">
+              <label>Nombre completo *</label>
+              <input type="text" class="form-control" id="nr_nombre" placeholder="Nombre del miembro">
+            </div>
+            <div class="form-group">
+              <label>Dirección</label>
+              <input type="text" class="form-control" id="nr_direccion" placeholder="Dirección">
+            </div>
+            <div class="form-group">
+              <label>Ciudad</label>
+              <input type="text" class="form-control" id="nr_ciudad">
+            </div>
+            <div class="form-group">
+              <label>Código Postal</label>
+              <input type="number" class="form-control" id="nr_cp">
+            </div>
+            <div class="form-group">
+              <label>Departamento/Provincia</label>
+              <input type="text" class="form-control" id="nr_depto">
+            </div>
+            <div class="form-group">
+              <label>Género *</label>
+              <select class="form-control" id="nr_genero">
+                <option value="">-- Seleccionar --</option>
+                <option>Hombre</option>
+                <option>Mujer</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Fecha de Nacimiento *</label>
+              <input type="date" class="form-control" id="nr_dob">
+            </div>
+            <div class="form-group">
+              <label>Teléfono *</label>
+              <input type="tel" class="form-control" id="nr_tel" placeholder="8888-8888">
+            </div>
+            <div class="form-group">
+              <label>Correo Electrónico</label>
+              <input type="email" class="form-control" id="nr_email" placeholder="correo@mail.com">
+            </div>
+            <div class="form-group">
+              <label>Fecha de Ingreso *</label>
+              <input type="date" class="form-control" id="nr_jdate">
+            </div>
+            <div class="form-group">
+              <label>Plan *</label>
+              <select class="form-control" id="nr_plan" onchange="loadPlanDetail(this.value)">
+                <option value="">-- Seleccionar Plan --</option>
+              </select>
+            </div>
+            <div id="planDetailBox" class="full" style="display:none;">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div class="info-chip"><div class="info-chip-label">Validez</div><div class="info-chip-value" id="pd_validez">-</div></div>
+                <div class="info-chip"><div class="info-chip-label">Costo</div><div class="info-chip-value" id="pd_costo">-</div></div>
+                <div class="info-chip full" style="grid-column:1/-1;"><div class="info-chip-label">Descripción</div><div class="info-chip-value" id="pd_desc">-</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="registrarMiembro()">Registrar</button>
+            <button class="btn btn-secondary" onclick="limpiarNuevoRegistro()">Limpiar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGOS -->
+      <div id="screen-pagos" class="screen">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">💳 Gestión de Pagos</div>
+          </div>
+          <div class="card-body">
+            <div id="alertPago" class="alert"></div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Vencimiento</th>
+                    <th>Nombre</th>
+                    <th>ID Miembro</th>
+                    <th>Teléfono</th>
+                    <th>Correo</th>
+                    <th>Género</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="pagosTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VER MIEMBROS -->
+      <div id="screen-ver-miembros" class="screen">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">👥 Detalles de Miembros</div>
+            <div class="search-bar">
+              <input type="text" class="form-control" id="searchMiembros" placeholder="Buscar por nombre..." oninput="filtrarMiembros()">
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Vencimiento</th>
+                    <th>ID Miembro</th>
+                    <th>Nombre</th>
+                    <th>Contacto</th>
+                    <th>Correo</th>
+                    <th>Género</th>
+                    <th>Ingreso</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="miembrosTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EDITAR MIEMBROS -->
+      <div id="screen-editar-miembros" class="screen">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">✏️ Editar Miembros</div>
+          </div>
+          <div class="card-body">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Teléfono</th>
+                    <th>Correo</th>
+                    <th>Plan</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="editarTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ESTADO DE SALUD -->
+      <div id="screen-estado-salud" class="screen">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">❤️ Estado de Salud & IMC</div>
+          </div>
+          <div class="card-body">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Nombre</th>
+                    <th>Peso</th>
+                    <th>Altura</th>
+                    <th>IMC</th>
+                    <th>Categoría</th>
+                    <th>Objetivo</th>
+                    <th>Progreso</th>
+                    <th>% Grasa</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="saludTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NUEVO PLAN -->
+      <div id="screen-nuevo-plan" class="screen">
+        <div class="form-card">
+          <div class="form-card-title">Crear Nuevo Plan</div>
+          <div id="alertPlan" class="alert"></div>
+          <div class="form-group">
+            <label>ID de Plan</label>
+            <input type="text" class="form-control" id="pl_id" readonly>
+          </div>
+          <div class="form-group">
+            <label>Nombre del Plan *</label>
+            <input type="text" class="form-control" id="pl_nombre" placeholder="ej: Plan Mensual Básico">
+          </div>
+          <div class="form-group">
+            <label>Descripción</label>
+            <input type="text" class="form-control" id="pl_desc" placeholder="Detalles del plan">
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Validez (meses) *</label>
+              <input type="number" class="form-control" id="pl_meses" placeholder="1">
+            </div>
+            <div class="form-group">
+              <label>Costo *</label>
+              <input type="number" class="form-control" id="pl_costo" placeholder="25000">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="crearPlan()">Crear Plan</button>
+            <button class="btn btn-secondary" onclick="limpiarPlan()">Limpiar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- VER PLANES -->
+      <div id="screen-ver-planes" class="screen">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📋 Administrar Planes</div>
+            <button class="btn btn-primary btn-sm" onclick="showScreen('nuevo-plan')">➕ Nuevo Plan</button>
+          </div>
+          <div class="card-body">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>ID Plan</th>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Meses</th>
+                    <th>Costo</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="planesTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MIEMBROS POR MES -->
+      <div id="screen-miembros-mes" class="screen">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📅 Miembros por Mes</div>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <select class="form-control" id="filtroMes" style="width:auto;" onchange="cargarMiembrosMes()">
+                <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+                <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+                <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+                <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+              </select>
+              <input type="number" class="form-control" id="filtroAnio" style="width:90px;" value="2025" onchange="cargarMiembrosMes()">
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>#</th><th>ID</th><th>Nombre</th><th>Género</th><th>Teléfono</th><th>F. Ingreso</th><th>Plan</th></tr></thead>
+                <tbody id="miembrosMesBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MIEMBROS POR AÑO -->
+      <div id="screen-miembros-anio" class="screen">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📅 Miembros por Año</div>
+            <input type="number" class="form-control" id="filtroAnioFull" style="width:100px;" value="2025" onchange="cargarMiembrosAnio()">
+          </div>
+          <div class="card-body">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>#</th><th>ID</th><th>Nombre</th><th>Género</th><th>Teléfono</th><th>F. Ingreso</th><th>Plan</th></tr></thead>
+                <tbody id="miembrosAnioBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- INGRESOS POR MES -->
+      <div id="screen-ingresos-mes" class="screen">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">💰 Ingresos por Mes</div>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <select class="form-control" id="filtroMesIng" style="width:auto;" onchange="cargarIngresosMes()">
+                <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+                <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+                <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+                <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+              </select>
+              <input type="number" class="form-control" id="filtroAnioIng" style="width:90px;" value="2025" onchange="cargarIngresosMes()">
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>#</th><th>ID</th><th>Nombre</th><th>Teléfono</th><th>Género</th><th>F. Pago</th><th>Vencimiento</th><th>Plan</th><th>Monto</th><th>Validez</th></tr></thead>
+                <tbody id="ingresosMesBody"></tbody>
+              </table>
+            </div>
+            <div id="totalIngresos" style="text-align:right;margin-top:14px;font-size:1.1rem;font-weight:700;color:var(--accent);"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AGREGAR RUTINA -->
+      <div id="screen-agregar-rutina" class="screen">
+        <div class="form-card" style="max-width:580px;">
+          <div class="form-card-title">Agregar Nueva Rutina</div>
+          <div id="alertRutina" class="alert"></div>
+          <div class="form-group">
+            <label>Nombre de Rutina *</label>
+            <input type="text" class="form-control" id="rut_nombre" placeholder="ej: Rutina Fuerza Semana 1">
+          </div>
+          <div class="form-group"><label>Día 1</label><textarea class="form-control" id="rut_d1" rows="2"></textarea></div>
+          <div class="form-group"><label>Día 2</label><textarea class="form-control" id="rut_d2" rows="2"></textarea></div>
+          <div class="form-group"><label>Día 3</label><textarea class="form-control" id="rut_d3" rows="2"></textarea></div>
+          <div class="form-group"><label>Día 4</label><textarea class="form-control" id="rut_d4" rows="2"></textarea></div>
+          <div class="form-group"><label>Día 5</label><textarea class="form-control" id="rut_d5" rows="2"></textarea></div>
+          <div class="form-group"><label>Día 6</label><textarea class="form-control" id="rut_d6" rows="2"></textarea></div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="guardarRutina()">Guardar Rutina</button>
+            <button class="btn btn-secondary" onclick="limpiarRutina()">Limpiar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- EDITAR RUTINA -->
+      <div id="screen-editar-rutina" class="screen">
+        <div class="card">
+          <div class="card-header"><div class="card-title">✏️ Editar Rutinas</div></div>
+          <div class="card-body">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>#</th><th>Nombre</th><th>Acciones</th></tr></thead>
+                <tbody id="editarRutinasBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VER RUTINAS -->
+      <div id="screen-ver-rutinas" class="screen">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🏋️ Rutinas de Ejercicios</div>
+            <button class="btn btn-primary btn-sm" onclick="showScreen('agregar-rutina')">➕ Agregar</button>
+            <button class="btn btn-secondary btn-sm" onclick="showScreen('rutina-ia')">🤖 Generar con IA</button>
+          </div>
+          <div class="card-body">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>#</th><th>Nombre de Rutina</th><th>Detalles</th></tr></thead>
+                <tbody id="rutinasTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- RUTINA IA -->
+      <div id="screen-rutina-ia" class="screen">
+        <div class="form-card" style="max-width:680px;">
+          <div class="form-card-title">🤖 Generar Rutina con Inteligencia Artificial</div>
+          <div id="alertRutinaIA" class="alert"></div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Miembro</label>
+              <select class="form-control" id="ria_miembro">
+                <option value="">-- Seleccionar miembro --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Objetivo principal</label>
+              <select class="form-control" id="ria_objetivo">
+                <option value="pérdida de peso">Pérdida de peso</option>
+                <option value="ganancia muscular">Ganancia muscular</option>
+                <option value="fuerza">Fuerza</option>
+                <option value="resistencia cardiovascular">Resistencia cardiovascular</option>
+                <option value="tonificación">Tonificación</option>
+                <option value="salud general">Salud general</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Nivel de experiencia</label>
+              <select class="form-control" id="ria_nivel">
+                <option value="principiante">Principiante</option>
+                <option value="intermedio">Intermedio</option>
+                <option value="avanzado">Avanzado</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Días por semana</label>
+              <select class="form-control" id="ria_dias">
+                <option value="3">3 días</option>
+                <option value="4">4 días</option>
+                <option value="5">5 días</option>
+                <option value="6">6 días</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Equipamiento disponible</label>
+              <select class="form-control" id="ria_equipo">
+                <option value="gimnasio completo">Gimnasio completo</option>
+                <option value="mancuernas y barra">Mancuernas y barra</option>
+                <option value="solo mancuernas">Solo mancuernas</option>
+                <option value="sin equipamiento (calistenia)">Sin equipamiento (calistenia)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Condición física especial</label>
+              <input type="text" class="form-control" id="ria_condicion" placeholder="ej: lesión de rodilla, embarazo, etc.">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="generarRutinaIA()" id="btnGenerarRutina">🤖 Generar Rutina</button>
+            <button class="btn btn-secondary" onclick="showScreen('ver-rutinas')">Cancelar</button>
+          </div>
+          <!-- Resultado IA -->
+          <div id="rutinaIAResultado" style="display:none;margin-top:24px;">
+            <div style="border-top:1px solid var(--border);padding-top:20px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+                <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:800;color:var(--accent);">✅ Rutina Generada</div>
+                <div style="display:flex;gap:8px;">
+                  <button class="btn btn-primary btn-sm" onclick="guardarRutinaIA()">💾 Guardar</button>
+                  <button class="btn btn-secondary btn-sm" onclick="descargarRutinaIAPDF()">📄 PDF</button>
+                  <button class="btn btn-warning btn-sm" onclick="generarNutricionDesdeRutina()">🥗 Generar Nutrición</button>
+                </div>
+              </div>
+              <div id="rutinaIAContent"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NUTRICION IA -->
+      <div id="screen-nutricion-ia" class="screen">
+        <div class="form-card" style="max-width:680px;">
+          <div class="form-card-title">🥗 Plan Nutricional con Inteligencia Artificial</div>
+          <div id="alertNutricionIA" class="alert"></div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Miembro</label>
+              <select class="form-control" id="nia_miembro" onchange="cargarDatosSaludNutricion(this.value)">
+                <option value="">-- Seleccionar miembro --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Objetivo</label>
+              <select class="form-control" id="nia_objetivo">
+                <option value="pérdida de peso">Pérdida de peso</option>
+                <option value="ganancia muscular">Ganancia muscular</option>
+                <option value="mantenimiento">Mantenimiento</option>
+                <option value="rendimiento deportivo">Rendimiento deportivo</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Edad</label>
+              <input type="number" class="form-control" id="nia_edad" placeholder="años">
+            </div>
+            <div class="form-group">
+              <label>Género</label>
+              <select class="form-control" id="nia_genero">
+                <option value="Hombre">Hombre</option>
+                <option value="Mujer">Mujer</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Peso (kg)</label>
+              <input type="number" class="form-control" id="nia_peso" placeholder="70">
+            </div>
+            <div class="form-group">
+              <label>Altura (cm)</label>
+              <input type="number" class="form-control" id="nia_altura" placeholder="170">
+            </div>
+            <div class="form-group">
+              <label>Nivel de actividad</label>
+              <select class="form-control" id="nia_actividad">
+                <option value="sedentario">Sedentario</option>
+                <option value="ligero (1-3 días/semana)">Ligero (1-3 días/semana)</option>
+                <option value="moderado (3-5 días/semana)" selected>Moderado (3-5 días/semana)</option>
+                <option value="intenso (6-7 días/semana)">Intenso (6-7 días/semana)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Restricciones alimenticias</label>
+              <input type="text" class="form-control" id="nia_restricciones" placeholder="ej: vegetariano, sin gluten, diabetes...">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="generarNutricionIA()" id="btnGenerarNutricion">🥗 Generar Plan</button>
+            <button class="btn btn-secondary" onclick="showScreen('ver-miembros')">Cancelar</button>
+          </div>
+          <!-- Resultado -->
+          <div id="nutricionIAResultado" style="display:none;margin-top:24px;">
+            <div style="border-top:1px solid var(--border);padding-top:20px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+                <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:800;color:var(--accent);">✅ Plan Nutricional Generado</div>
+                <button class="btn btn-primary btn-sm" onclick="descargarNutricionPDF()">📄 Descargar PDF</button>
+              </div>
+              <div id="nutricionIAContent"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- DETECTOR DE COMIDAS -->
+      <div id="screen-detector-comida" class="screen">
+        <div class="form-card" style="max-width:680px;">
+          <div class="form-card-title">📸 Detector de Comidas con IA</div>
+          <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:20px;">Fotografiá o subí tu comida y la IA analiza calorías, macros y recomendaciones.</p>
+          <div id="alertDetector" class="alert"></div>
+
+          <!-- Botones fuente -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+            <button onclick="document.getElementById('fotoComidaCamara').click()" 
+              style="background:linear-gradient(135deg,rgba(127,255,0,.15),rgba(127,255,0,.05));border:1px solid rgba(127,255,0,.3);border-radius:14px;padding:20px 12px;cursor:pointer;text-align:center;transition:all .2s;"
+              onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='rgba(127,255,0,.3)'">
+              <div style="font-size:2rem;margin-bottom:6px;">📷</div>
+              <div style="font-weight:700;color:var(--text);font-size:.9rem;">Tomar foto</div>
+              <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px;">Abrir cámara</div>
+            </button>
+            <button onclick="document.getElementById('fotoComidaArchivo').click()"
+              style="background:linear-gradient(135deg,rgba(0,200,255,.12),rgba(0,200,255,.03));border:1px solid rgba(0,200,255,.25);border-radius:14px;padding:20px 12px;cursor:pointer;text-align:center;transition:all .2s;"
+              onmouseover="this.style.borderColor='var(--info)'" onmouseout="this.style.borderColor='rgba(0,200,255,.25)'">
+              <div style="font-size:2rem;margin-bottom:6px;">🖼️</div>
+              <div style="font-weight:700;color:var(--text);font-size:.9rem;">Subir archivo</div>
+              <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px;">Galería / archivos</div>
+            </button>
+          </div>
+          <input type="file" id="fotoComidaCamara" accept="image/*" capture="environment" style="display:none" onchange="previsualizarFoto(event)">
+          <input type="file" id="fotoComidaArchivo" accept="image/*" style="display:none" onchange="previsualizarFoto(event)">
+
+          <!-- Preview -->
+          <div id="fotoPreview" style="display:none;margin-bottom:16px;">
+            <div style="position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--border);margin-bottom:12px;">
+              <img id="fotoImg" style="width:100%;max-height:300px;object-fit:cover;display:block;">
+              <div style="position:absolute;top:10px;right:10px;">
+                <button onclick="cambiarFoto()" style="background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.2);color:#fff;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:.78rem;backdrop-filter:blur(4px);">🔄 Cambiar</button>
+              </div>
+            </div>
+            <!-- Miembro -->
+            <div class="form-group" style="margin-bottom:12px;">
+              <label>Asignar a miembro (opcional)</label>
+              <select class="form-control" id="det_miembro">
+                <option value="">-- Sin asignar --</option>
+              </select>
+            </div>
+            <button class="btn btn-primary btn-full" onclick="analizarComida()" id="btnAnalizar" style="font-size:1rem;padding:14px;">
+              🔍 Analizar Comida con IA
+            </button>
+          </div>
+
+          <!-- Resultado -->
+          <div id="detectorResultado" style="display:none;margin-top:8px;">
+            <div style="border-top:1px solid var(--border);padding-top:20px;">
+              <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.2rem;font-weight:800;color:var(--accent);margin-bottom:14px;">✅ Análisis Nutricional</div>
+              <div id="detectorContent"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- CLIENTES ACCESO -->
+      <div id="screen-clientes-acceso" class="screen">
+        <div class="card" style="max-width:640px;margin-bottom:20px;">
+          <div class="card-header">
+            <div class="card-title">🔑 Crear Acceso para Cliente</div>
+          </div>
+          <div class="card-body">
+            <div id="alertClienteAcceso" class="alert"></div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Nombre del cliente</label>
+                <input type="text" class="form-control" id="ca_nombre" placeholder="Juan Pérez">
+              </div>
+              <div class="form-group">
+                <label>Usuario *</label>
+                <input type="text" class="form-control" id="ca_usuario" placeholder="juanperez">
+              </div>
+              <div class="form-group">
+                <label>Contraseña *</label>
+                <input type="text" class="form-control" id="ca_pass" placeholder="clave123">
+              </div>
+              <div class="form-group">
+                <label>Teléfono / referencia</label>
+                <input type="text" class="form-control" id="ca_ref" placeholder="8888-8888">
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" onclick="guardarClienteAcceso()">✅ Crear Acceso</button>
+              <button class="btn btn-secondary" onclick="cargarClientesAcceso()">🔄 Actualizar lista</button>
+            </div>
+          </div>
+        </div>
+        <!-- Lista de clientes -->
+        <div class="card">
+          <div class="card-header"><div class="card-title">👥 Clientes con Acceso</div></div>
+          <div class="card-body">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>#</th><th>Nombre</th><th>Usuario</th><th>Referencia</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody id="clientesAccesoBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PERFIL -->
+      <div id="screen-perfil" class="screen">
+        <div class="form-card">
+          <div class="form-card-title">Editar Perfil de Usuario</div>
+          <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:20px;">Deberá iniciar sesión nuevamente después de actualizar el perfil.</p>
+          <div id="alertPerfil" class="alert"></div>
+          <div class="form-group">
+            <label>ID de Usuario</label>
+            <input type="text" class="form-control" id="pf_id" readonly>
+          </div>
+          <div class="form-group">
+            <label>Nombre completo</label>
+            <input type="text" class="form-control" id="pf_nombre">
+          </div>
+          <div class="form-group">
+            <label>Contraseña</label>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <span style="color:var(--text-muted);">**********</span>
+              <button class="btn btn-warning btn-sm" onclick="openModalCambiarPass()">Cambiar Contraseña</button>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="guardarPerfil()">Guardar</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- content -->
+  </div><!-- main -->
+  <!-- FAB Detector Comidas -->
+  <button class="fab" onclick="showScreen('detector-comida')" title="Detector de Comidas IA">📸</button>
+  <div class="fab-label">Detector de Comidas IA</div>
+
+</div><!-- appShell -->
+
+<!-- ===== MODALS ===== -->
+
+<!-- Modal Ver Detalle Miembro -->
+<div class="modal-overlay" id="modalDetalleMiembro">
+  <div class="modal" style="max-width:640px;">
+    <h3>📋 Detalle del Miembro</h3>
+    <div id="detalleMiembroContent" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary btn-sm" onclick="imprimirFactura()">🖨️ Factura</button>
+      <button class="btn btn-secondary" onclick="closeModal('modalDetalleMiembro')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Miembro -->
+<div class="modal-overlay" id="modalEditarMiembro">
+  <div class="modal" style="max-width:560px;">
+    <h3>✏️ Editar Miembro</h3>
+    <div id="alertEditarMiembro" class="alert"></div>
+    <input type="hidden" id="em_id">
+    <div class="form-grid">
+      <div class="form-group"><label>Nombre *</label><input type="text" class="form-control" id="em_nombre"></div>
+      <div class="form-group"><label>Teléfono</label><input type="tel" class="form-control" id="em_tel"></div>
+      <div class="form-group"><label>Correo</label><input type="email" class="form-control" id="em_email"></div>
+      <div class="form-group"><label>Género</label>
+        <select class="form-control" id="em_genero"><option>Hombre</option><option>Mujer</option></select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="guardarEdicionMiembro()">Guardar</button>
+      <button class="btn btn-secondary" onclick="closeModal('modalEditarMiembro')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Pago / Renovación -->
+<div class="modal-overlay" id="modalPago">
+  <div class="modal">
+    <h3>💳 Registrar Pago</h3>
+    <div id="alertModalPago" class="alert"></div>
+    <input type="hidden" id="mp_uid">
+    <input type="hidden" id="mp_planid">
+    <div id="mp_info" style="margin-bottom:16px;"></div>
+    <div class="form-group">
+      <label>Fecha de Pago *</label>
+      <input type="date" class="form-control" id="mp_fecha">
+    </div>
+    <div class="form-group">
+      <label>Plan</label>
+      <select class="form-control" id="mp_plan" onchange="updatePlanInfo()">
+      </select>
+    </div>
+    <div id="mp_plan_detail" style="margin-top:8px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="procesarPago()">Confirmar Pago</button>
+      <button class="btn btn-secondary" onclick="closeModal('modalPago')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Estado de Salud -->
+<div class="modal-overlay" id="modalSalud">
+  <div class="modal" style="max-width:580px;">
+    <h3>❤️ Estado de Salud & Progreso</h3>
+    <div id="alertSalud" class="alert"></div>
+    <input type="hidden" id="sal_uid">
+    <div id="sal_info" style="margin-bottom:14px;font-size:.87rem;color:var(--text-muted);padding:10px;background:var(--surface2);border-radius:8px;"></div>
+
+    <!-- IMC en tiempo real -->
+    <div id="sal_imc_display" style="display:none;margin-bottom:16px;">
+      <div style="background:var(--surface2);border-radius:14px;padding:16px;border:1px solid var(--border);">
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:10px;">📊 IMC en tiempo real</div>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+          <div style="text-align:center;">
+            <div id="sal_imc_valor" style="font-family:'Barlow Condensed',sans-serif;font-size:2.4rem;font-weight:800;line-height:1;">--</div>
+            <div style="font-size:.72rem;color:var(--text-muted);">IMC kg/m²</div>
+          </div>
+          <div style="flex:1;">
+            <div id="sal_imc_categoria" style="font-weight:700;font-size:.95rem;margin-bottom:6px;">--</div>
+            <div id="sal_imc_barra" style="height:8px;border-radius:4px;background:var(--border);position:relative;overflow:visible;">
+              <div id="sal_imc_indicador" style="position:absolute;top:-3px;width:14px;height:14px;border-radius:50%;border:2px solid #fff;transform:translateX(-50%);transition:left .4s;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:.65rem;color:var(--text-muted);margin-top:4px;">
+              <span>16</span><span>18.5</span><span>25</span><span>30</span><span>40</span>
+            </div>
+          </div>
+        </div>
+        <div id="sal_peso_ideal" style="margin-top:10px;font-size:.82rem;color:var(--text-muted);"></div>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-group"><label>Peso actual (kg)</label><input type="number" class="form-control" id="sal_peso" step="0.1" oninput="calcularIMC()" placeholder="70"></div>
+      <div class="form-group"><label>Altura (cm)</label><input type="number" class="form-control" id="sal_altura" oninput="calcularIMC()" placeholder="170"></div>
+      <div class="form-group"><label>Peso objetivo (kg)</label><input type="number" class="form-control" id="sal_peso_obj" step="0.1" placeholder="65"></div>
+      <div class="form-group"><label>% Grasa corporal</label><input type="number" class="form-control" id="sal_grasa" step="0.1" placeholder="20"></div>
+      <div class="form-group"><label>Calorías diarias</label><input type="number" class="form-control" id="sal_cal" placeholder="2000"></div>
+      <div class="form-group"><label>Objetivo principal</label>
+        <select class="form-control" id="sal_objetivo">
+          <option value="">-- Seleccionar --</option>
+          <option value="pérdida de peso">🔥 Pérdida de peso</option>
+          <option value="ganancia muscular">💪 Ganancia muscular</option>
+          <option value="mantenimiento">⚖️ Mantenimiento</option>
+          <option value="resistencia">🏃 Resistencia</option>
+          <option value="fuerza">🏋️ Fuerza</option>
+          <option value="salud general">❤️ Salud general</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Barra de progreso peso -->
+    <div id="sal_progreso_box" style="display:none;margin-bottom:16px;">
+      <div style="background:var(--surface2);border-radius:12px;padding:14px;border:1px solid var(--border);">
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:10px;">🎯 Progreso hacia objetivo</div>
+        <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:8px;">
+          <span>Peso actual: <strong id="prog_actual" style="color:var(--text)">--</strong> kg</span>
+          <span>Objetivo: <strong id="prog_objetivo" style="color:var(--accent)">--</strong> kg</span>
+        </div>
+        <div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden;margin-bottom:6px;">
+          <div id="prog_barra" style="height:100%;border-radius:5px;background:linear-gradient(90deg,var(--accent),#4caf50);transition:width .5s;"></div>
+        </div>
+        <div id="prog_texto" style="font-size:.82rem;color:var(--text-muted);text-align:center;"></div>
+      </div>
+    </div>
+
+    <div class="form-group"><label>Observaciones / Notas</label><textarea class="form-control" id="sal_obs" rows="2" placeholder="Notas adicionales..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="guardarSalud()">💾 Guardar</button>
+      <button class="btn btn-secondary" onclick="closeModal('modalSalud')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Plan -->
+<div class="modal-overlay" id="modalEditarPlan">
+  <div class="modal">
+    <h3>✏️ Editar Plan</h3>
+    <div id="alertEditarPlan" class="alert"></div>
+    <input type="hidden" id="ep_id">
+    <div class="form-group"><label>Nombre del Plan *</label><input type="text" class="form-control" id="ep_nombre"></div>
+    <div class="form-group"><label>Descripción</label><input type="text" class="form-control" id="ep_desc"></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Validez (meses)</label><input type="number" class="form-control" id="ep_meses"></div>
+      <div class="form-group"><label>Costo</label><input type="number" class="form-control" id="ep_costo"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="guardarEdicionPlan()">Guardar</button>
+      <button class="btn btn-secondary" onclick="closeModal('modalEditarPlan')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Ver Detalle Rutina -->
+<div class="modal-overlay" id="modalDetalleRutina">
+  <div class="modal" style="max-width:560px;">
+    <h3 id="detalleRutinaTitulo">Detalle Rutina</h3>
+    <div id="detalleRutinaContent"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalDetalleRutina')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Rutina -->
+<div class="modal-overlay" id="modalEditarRutina">
+  <div class="modal" style="max-width:560px;">
+    <h3>✏️ Editar Rutina</h3>
+    <div id="alertEditRutina" class="alert"></div>
+    <input type="hidden" id="er_id">
+    <div class="form-group"><label>Nombre *</label><input type="text" class="form-control" id="er_nombre"></div>
+    <div class="form-group"><label>Día 1</label><textarea class="form-control" id="er_d1" rows="2"></textarea></div>
+    <div class="form-group"><label>Día 2</label><textarea class="form-control" id="er_d2" rows="2"></textarea></div>
+    <div class="form-group"><label>Día 3</label><textarea class="form-control" id="er_d3" rows="2"></textarea></div>
+    <div class="form-group"><label>Día 4</label><textarea class="form-control" id="er_d4" rows="2"></textarea></div>
+    <div class="form-group"><label>Día 5</label><textarea class="form-control" id="er_d5" rows="2"></textarea></div>
+    <div class="form-group"><label>Día 6</label><textarea class="form-control" id="er_d6" rows="2"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="guardarEdicionRutina()">Guardar</button>
+      <button class="btn btn-secondary" onclick="closeModal('modalEditarRutina')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cambiar Contraseña -->
+<div class="modal-overlay" id="modalCambiarPass">
+  <div class="modal">
+    <h3>🔒 Cambiar Contraseña</h3>
+    <div id="alertPass" class="alert"></div>
+    <div class="form-group"><label>Contraseña Actual</label><input type="password" class="form-control" id="pass_actual"></div>
+    <div class="form-group"><label>Nueva Contraseña</label><input type="password" class="form-control" id="pass_nueva"></div>
+    <div class="form-group"><label>Confirmar Nueva</label><input type="password" class="form-control" id="pass_confirmar"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="cambiarPassword()">Cambiar</button>
+      <button class="btn btn-secondary" onclick="closeModal('modalCambiarPass')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Confirmar Eliminar -->
+<div class="modal-overlay" id="modalConfirmar">
+  <div class="modal" style="max-width:380px;text-align:center;">
+    <div style="font-size:2.5rem;margin-bottom:14px;">⚠️</div>
+    <h3 id="confirmTitle">¿Confirmar acción?</h3>
+    <p id="confirmMsg" style="color:var(--text-muted);font-size:.9rem;margin:10px 0 20px;"></p>
+    <div class="modal-actions" style="justify-content:center;">
+      <button class="btn btn-danger" id="confirmBtn">Eliminar</button>
+      <button class="btn btn-secondary" onclick="closeModal('modalConfirmar')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Historial de Peso -->
+<div class="modal-overlay" id="modalHistorialPeso">
+  <div class="modal" style="max-width:520px;">
+    <h3>📈 Historial de Peso</h3>
+    <div id="historialNombre" style="color:var(--text-muted);font-size:.85rem;margin-bottom:16px;"></div>
+    <div id="historialContent"></div>
+    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
+      <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:10px;">Registrar nuevo peso</div>
+      <div style="display:flex;gap:10px;align-items:flex-end;">
+        <div class="form-group" style="margin:0;flex:1;">
+          <label>Peso (kg)</label>
+          <input type="number" class="form-control" id="hist_peso" step="0.1" placeholder="70.5">
+        </div>
+        <div class="form-group" style="margin:0;flex:1;">
+          <label>Fecha</label>
+          <input type="date" class="form-control" id="hist_fecha">
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="agregarPesoHistorial()" style="white-space:nowrap;margin-bottom:0;">➕ Agregar</button>
+      </div>
+      <input type="hidden" id="hist_uid">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalHistorialPeso')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== SUPABASE CONFIG =====
+const SUPABASE_URL = 'https://hrnfbkpdtxfvulwnhphq.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhybmZia3BkdHhmdnVsd25ocGhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NTg4ODcsImV4cCI6MjA5MjAzNDg4N30.cKRL7Se-F7eWPfH8f74Z5cC4uRd3vYRx0X1uQ-UTcag';
+
+const sb = {
+  async query(path, options = {}) {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': options.prefer || '',
+        ...options.headers
+      },
+      method: options.method || 'GET',
+      body: options.body ? JSON.stringify(options.body) : undefined
+    });
+    if (!res.ok && res.status !== 204) {
+      const err = await res.text();
+      throw new Error(err);
+    }
+    if (res.status === 204) return null;
+    return res.json();
+  },
+
+  async select(table, query = '') {
+    return this.query(table + '?' + query);
+  },
+
+  async insert(table, data) {
+    return this.query(table, {
+      method: 'POST',
+      body: data,
+      prefer: 'return=representation'
+    });
+  },
+
+  async update(table, filter, data) {
+    return this.query(table + '?' + filter, {
+      method: 'PATCH',
+      body: data,
+      prefer: 'return=representation'
+    });
+  },
+
+  async delete(table, filter) {
+    return this.query(table + '?' + filter, { method: 'DELETE' });
+  }
+};
+
+// ===== AUTH =====
+// Datos de admin (en producción esto estaría en Supabase tabla gym_admin)
+// Cambiá esto según tu configuración
+const ADMIN_USER = 'admin';
+const ADMIN_PASS = 'admin123';
+let currentUser = null;
+let currentDetalleMiembro = null;
+let planesCache = [];
+
+function switchTab(tab) {
+  const panelAdmin = document.getElementById('panelAdmin');
+  const panelAcceso = document.getElementById('panelAcceso');
+  const tabAdmin = document.getElementById('tabAdmin');
+  const tabAcceso = document.getElementById('tabAcceso');
+  if (tab === 'admin') {
+    panelAdmin.style.display = 'block';
+    panelAcceso.style.display = 'none';
+    tabAdmin.style.background = 'var(--accent)';
+    tabAdmin.style.color = '#0a0a0a';
+    tabAcceso.style.background = 'transparent';
+    tabAcceso.style.color = 'var(--text-muted)';
+  } else {
+    panelAdmin.style.display = 'none';
+    panelAcceso.style.display = 'block';
+    tabAcceso.style.background = 'var(--accent)';
+    tabAcceso.style.color = '#0a0a0a';
+    tabAdmin.style.background = 'transparent';
+    tabAdmin.style.color = 'var(--text-muted)';
+  }
+}
+
+function copiarSINPE() {
+  navigator.clipboard.writeText('70082741').then(() => {
+    showAlert('loginAlert', 'Número copiado: 7008-2741');
+  }).catch(() => {
+    alert('Número SINPE: 7008-2741');
+  });
+}
+
+async function doLogin() {
+  const user = document.getElementById('loginUser').value.trim();
+  const pass = document.getElementById('loginPass').value.trim();
+  const alertEl = document.getElementById('loginAlert');
+
+  if (!user || !pass) {
+    alertEl.className = 'alert alert-error show';
+    alertEl.innerHTML = '⚠ Ingresá usuario y contraseña';
+    return;
+  }
+
+  // 1. Verificar admin hardcoded
+  if (user === ADMIN_USER && pass === ADMIN_PASS) {
+    currentUser = user;
+    currentRole = 'admin';
+    alertEl.classList.remove('show');
+    document.getElementById('screen-login').style.display = 'none';
+    document.getElementById('appShell').style.display = 'flex';
+    document.getElementById('welcomeChip').textContent = 'Bienvenid@ ' + user;
+    document.getElementById('pf_id').value = user;
+    document.getElementById('pf_nombre').value = user;
+    initApp();
+    return;
+  }
+
+  // 2. Verificar cliente en Supabase
+  showLoading(true);
+  try {
+    const passHash = btoa(pass + '_gm_salt');
+    const clientes = await sb.select('gm_clientes',
+      'select=*&usuario=eq.' + encodeURIComponent(user) + '&activo=eq.true');
+
+    if (clientes && clientes.length > 0) {
+      const cliente = clientes[0];
+      if (cliente.pass_hash === passHash) {
+        currentUser = user;
+        currentRole = 'cliente';
+        alertEl.classList.remove('show');
+        document.getElementById('screen-login').style.display = 'none';
+        document.getElementById('appShell').style.display = 'flex';
+        document.getElementById('welcomeChip').textContent = 'Bienvenid@ ' + (cliente.nombre || user);
+        // Clientes solo ven detector y rutinas
+        ocultarMenuAdmin();
+        initApp();
+        return;
+      }
+    }
+    alertEl.className = 'alert alert-error show';
+    alertEl.innerHTML = '⚠ Usuario o contraseña incorrectos';
+  } catch(e) {
+    alertEl.className = 'alert alert-error show';
+    alertEl.innerHTML = '⚠ Error de conexión. Intentá de nuevo.';
+  } finally { showLoading(false); }
+}
+
+let currentRole = 'admin';
+
+function ocultarMenuAdmin() {
+  // Clientes solo ven detector de comidas, rutinas y nutrición
+  const itemsAdmin = ['nuevo-registro','pagos','ver-miembros','editar-miembros',
+    'estado-salud','nuevo-plan','ver-planes','miembros-mes','miembros-anio',
+    'ingresos-mes','perfil'];
+  itemsAdmin.forEach(screen => {
+    const nav = document.querySelector(`[data-screen="${screen}"]`);
+    if (nav) nav.style.display = 'none';
+  });
+  // Ocultar secciones del sidebar
+  document.querySelectorAll('.nav-section').forEach(s => {
+    if (s.textContent.includes('GESTIÓN') || s.textContent.includes('CUENTA')) {
+      s.style.display = 'none';
+    }
+  });
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('screen-login').style.display !== 'none') doLogin();
+});
+
+function doLogout() {
+  currentUser = null;
+  document.getElementById('appShell').style.display = 'none';
+  document.getElementById('screen-login').style.display = 'flex';
+}
+
+// ===== NAVIGATION =====
+function showScreen(name) {
+  document.querySelectorAll('.main .screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('screen-' + name);
+  if (el) el.classList.add('active');
+
+  const titles = {
+    'dashboard': 'Panel de Control',
+    'nuevo-registro': 'Nuevo Registro',
+    'pagos': 'Gestión de Pagos',
+    'ver-miembros': 'Detalles de Miembros',
+    'editar-miembros': 'Editar Miembros',
+    'estado-salud': 'Estado de Salud',
+    'nuevo-plan': 'Nuevo Plan',
+    'ver-planes': 'Administrar Planes',
+    'miembros-mes': 'Miembros por Mes',
+    'miembros-anio': 'Miembros por Año',
+    'ingresos-mes': 'Ingresos por Mes',
+    'agregar-rutina': 'Agregar Rutina',
+    'editar-rutina': 'Editar Rutinas',
+    'ver-rutinas': 'Ver Rutinas',
+    'rutina-ia': '🤖 Generar Rutina con IA',
+    'nutricion-ia': '🥗 Plan Nutricional IA',
+    'detector-comida': '📸 Detector de Comidas IA',
+    'perfil': 'Mi Perfil',
+    'clientes-acceso': '🔑 Accesos Clientes'
+  };
+  document.getElementById('topbarTitle').textContent = titles[name] || name;
+
+  document.querySelectorAll('.nav-item[data-screen]').forEach(i => i.classList.remove('active'));
+  const activeNav = document.querySelector(`.nav-item[data-screen="${name}"]`);
+  if (activeNav) activeNav.classList.add('active');
+
+  // Load data per screen
+  const loaders = {
+    'dashboard': loadDashboard,
+    'pagos': loadPagos,
+    'ver-miembros': loadVerMiembros,
+    'editar-miembros': loadEditarMiembros,
+    'estado-salud': loadEstadoSalud,
+    'ver-planes': loadVerPlanes,
+    'miembros-mes': cargarMiembrosMes,
+    'miembros-anio': cargarMiembrosAnio,
+    'ingresos-mes': cargarIngresosMes,
+    'ver-rutinas': loadVerRutinas,
+    'clientes-acceso': cargarClientesAcceso,
+    'rutina-ia': initRutinaIA,
+    'nutricion-ia': initNutricionIA,
+    'detector-comida': initDetectorComida,
+    'editar-rutina': loadEditarRutinas,
+    'nuevo-registro': initNuevoRegistro,
+    'nuevo-plan': initNuevoPlan
+  };
+  if (loaders[name]) loaders[name]();
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+}
+
+function toggleSub(id) {
+  // En móvil, navegar directo a la pantalla principal
+  if (window.innerWidth <= 768) {
+    const map = {
+      'subMembers': 'ver-miembros',
+      'subPlanes': 'ver-planes',
+      'subOverview': 'miembros-mes',
+      'subRutinas': 'rutina-ia'
+    };
+    if (map[id]) { showScreen(map[id]); return; }
+  }
+  const sub = document.getElementById(id);
+  const arrowId = 'arrow' + id.replace('sub', '');
+  const arrow = document.getElementById(arrowId);
+  sub.classList.toggle('open');
+  if (arrow) arrow.classList.toggle('open');
+}
+
+// ===== INIT APP =====
+async function initApp() {
+  await loadPlanes();
+  showScreen('dashboard');
+}
+
+// ===== HELPERS =====
+function showLoading(show) {
+  document.getElementById('loadingOverlay').classList.toggle('hidden', !show);
+}
+
+function showAlert(id, msg, type = 'success') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'alert alert-' + type + ' show';
+  el.innerHTML = (type === 'success' ? '✅ ' : '⚠️ ') + msg;
+  setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function randomId(len = 6) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  return Array.from({length: len}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+function formatDate(d) {
+  if (!d) return '-';
+  return d.split('T')[0];
+}
+
+function addMonths(dateStr, months) {
+  const d = new Date(dateStr);
+  d.setMonth(d.getMonth() + parseInt(months));
+  return d.toISOString().split('T')[0];
+}
+
+function buildChip(label, value) {
+  return `<div class="info-chip"><div class="info-chip-label">${label}</div><div class="info-chip-value">${value || '-'}</div></div>`;
+}
+
+// ===== DASHBOARD =====
+async function loadDashboard() {
+  try {
+    const now = new Date();
+    const ym = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    const mesStart = ym + '-01';
+    const mesEnd = ym + '-31';
+
+    // Miembros totales - traer todos y contar
+    const miembros = await sb.select('gm_usuarios', 'select=userid') || [];
+    document.getElementById('statMiembros').textContent = miembros.length;
+
+    // Nuevos este mes
+    const nuevos = await sb.select('gm_usuarios',
+      `select=userid&joining_date=gte.${mesStart}&joining_date=lte.${mesEnd}`) || [];
+    document.getElementById('statNuevos').textContent = nuevos.length;
+
+    // Planes activos
+    const planes = await sb.select('gm_planes', 'select=pid&activo=eq.true') || [];
+    document.getElementById('statPlanes').textContent = planes.length;
+
+    // Ingresos este mes - traer pagos y sumar con plan del caché
+    const pagos = await sb.select('gm_pagos',
+      `select=pid&paid_date=gte.${mesStart}&paid_date=lte.${mesEnd}`) || [];
+    let total = 0;
+    pagos.forEach(p => {
+      const plan = planesCache.find(pl => pl.pid === p.pid);
+      if (plan) total += plan.costo || 0;
+    });
+    // Si no hay cache de planes, intentar traer los precios directo
+    if (total === 0 && pagos.length > 0) {
+      const todosPlanes = await sb.select('gm_planes', 'select=pid,costo') || [];
+      pagos.forEach(p => {
+        const plan = todosPlanes.find(pl => pl.pid === p.pid);
+        if (plan) total += plan.costo || 0;
+      });
+    }
+    document.getElementById('statIngresos').textContent = '₡' + total.toLocaleString('es-CR');
+  } catch(e) {
+    console.error('Error dashboard:', e.message);
+    document.getElementById('statMiembros').textContent = '!';
+    document.getElementById('statNuevos').textContent = '!';
+    document.getElementById('statPlanes').textContent = '!';
+    document.getElementById('statIngresos').textContent = 'Error';
+  }
+}
+
+// ===== PLANES =====
+async function loadPlanes() {
+  try {
+    planesCache = await sb.select('gm_planes', 'select=*&activo=eq.true&order=costo.desc') || [];
+  } catch(e) { planesCache = []; }
+}
+
+async function loadVerPlanes() {
+  showLoading(true);
+  try {
+    const planes = await sb.select('gm_planes', 'select=*&activo=eq.true&order=costo.desc');
+    const tbody = document.getElementById('planesTableBody');
+    if (!planes || !planes.length) {
+      tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">📋</div><p>No hay planes registrados</p></div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = planes.map((p, i) => `
+      <tr>
+        <td>${i+1}</td>
+        <td><code style="font-size:.8rem;color:var(--accent)">${p.pid}</code></td>
+        <td><strong>${p.nombre}</strong></td>
+        <td style="max-width:200px;font-size:.82rem;color:var(--text-muted)">${p.descripcion || '-'}</td>
+        <td>${p.meses} mes${p.meses > 1 ? 'es' : ''}</td>
+        <td style="color:var(--accent);font-weight:700">₡${(p.costo||0).toLocaleString('es-CR')}</td>
+        <td>
+          <div class="td-actions">
+            <button class="btn btn-secondary btn-sm" onclick="abrirEditarPlan('${p.pid}')">✏️ Editar</button>
+            <button class="btn btn-danger btn-sm" onclick="confirmarEliminarPlan('${p.pid}')">🗑️</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    showAlert('alertPlan', 'Error al cargar planes: ' + e.message, 'error');
+  } finally { showLoading(false); }
+}
+
+function initNuevoPlan() {
+  document.getElementById('pl_id').value = randomId(6);
+}
+
+async function crearPlan() {
+  const pid = document.getElementById('pl_id').value;
+  const nombre = document.getElementById('pl_nombre').value.trim();
+  const desc = document.getElementById('pl_desc').value.trim();
+  const meses = parseInt(document.getElementById('pl_meses').value);
+  const costo = parseFloat(document.getElementById('pl_costo').value);
+
+  if (!nombre || !meses || !costo) return showAlert('alertPlan', 'Completá los campos requeridos', 'error');
+  showLoading(true);
+  try {
+    await sb.insert('gm_planes', { pid, nombre, descripcion: desc, meses, costo, activo: true });
+    await loadPlanes();
+    showAlert('alertPlan', 'Plan creado correctamente');
+    limpiarPlan();
+    setTimeout(() => showScreen('ver-planes'), 1200);
+  } catch(e) {
+    showAlert('alertPlan', 'Error: ' + e.message, 'error');
+  } finally { showLoading(false); }
+}
+
+function limpiarPlan() {
+  ['pl_nombre','pl_desc','pl_meses','pl_costo'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('pl_id').value = randomId(6);
+}
+
+function abrirEditarPlan(pid) {
+  const plan = planesCache.find(p => p.pid === pid);
+  if (!plan) return;
+  document.getElementById('ep_id').value = pid;
+  document.getElementById('ep_nombre').value = plan.nombre;
+  document.getElementById('ep_desc').value = plan.descripcion || '';
+  document.getElementById('ep_meses').value = plan.meses;
+  document.getElementById('ep_costo').value = plan.costo;
+  openModal('modalEditarPlan');
+}
+
+async function guardarEdicionPlan() {
+  const pid = document.getElementById('ep_id').value;
+  const nombre = document.getElementById('ep_nombre').value.trim();
+  const desc = document.getElementById('ep_desc').value.trim();
+  const meses = parseInt(document.getElementById('ep_meses').value);
+  const costo = parseFloat(document.getElementById('ep_costo').value);
+  if (!nombre) return showAlert('alertEditarPlan', 'El nombre es requerido', 'error');
+  showLoading(true);
+  try {
+    await sb.update('gm_planes', 'pid=eq.' + pid, { nombre, descripcion: desc, meses, costo });
+    await loadPlanes();
+    closeModal('modalEditarPlan');
+    loadVerPlanes();
+    showAlert('alertPlan', 'Plan actualizado');
+  } catch(e) {
+    showAlert('alertEditarPlan', 'Error: ' + e.message, 'error');
+  } finally { showLoading(false); }
+}
+
+function confirmarEliminarPlan(pid) {
+  document.getElementById('confirmTitle').textContent = '¿Eliminar este plan?';
+  document.getElementById('confirmMsg').textContent = 'Esta acción no se puede deshacer.';
+  document.getElementById('confirmBtn').onclick = async () => {
+    showLoading(true);
+    try {
+      await sb.update('gm_planes', 'pid=eq.' + pid, { activo: false });
+      await loadPlanes();
+      closeModal('modalConfirmar');
+      loadVerPlanes();
+    } catch(e) { alert('Error: ' + e.message); }
+    finally { showLoading(false); }
+  };
+  openModal('modalConfirmar');
+}
+
+// ===== NUEVO REGISTRO =====
+function initNuevoRegistro() {
+  document.getElementById('nr_mid').value = Date.now().toString().slice(-10);
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('nr_jdate').value = today;
+
+  const sel = document.getElementById('nr_plan');
+  sel.innerHTML = '<option value="">-- Seleccionar Plan --</option>' +
+    planesCache.map(p => `<option value="${p.pid}">${p.nombre} - ₡${p.costo.toLocaleString('es-CR')}</option>`).join('');
+}
+
+function loadPlanDetail(pid) {
+  const box = document.getElementById('planDetailBox');
+  if (!pid) { box.style.display = 'none'; return; }
+  const plan = planesCache.find(p => p.pid === pid);
+  if (!plan) { box.style.display = 'none'; return; }
+  document.getElementById('pd_validez').textContent = plan.meses + ' mes' + (plan.meses > 1 ? 'es' : '');
+  document.getElementById('pd_costo').textContent = '₡' + plan.costo.toLocaleString('es-CR');
+  document.getElementById('pd_desc').textContent = plan.descripcion || '-';
+  box.style.display = 'block';
+}
+
+async function registrarMiembro() {
+  const mid = document.getElementById('nr_mid').value;
+  const nombre = document.getElementById('nr_nombre').value.trim();
+  const genero = document.getElementById('nr_genero').value;
+  const tel = document.getElementById('nr_tel').value.trim();
+  const email = document.getElementById('nr_email').value.trim();
+  const dob = document.getElementById('nr_dob').value;
+  const jdate = document.getElementById('nr_jdate').value;
+  const planId = document.getElementById('nr_plan').value;
+  const direccion = document.getElementById('nr_direccion').value.trim();
+  const ciudad = document.getElementById('nr_ciudad').value.trim();
+  const cp = document.getElementById('nr_cp').value.trim();
+  const depto = document.getElementById('nr_depto').value.trim();
+
+  if (!nombre || !genero || !tel || !jdate || !planId) {
+    return showAlert('alertNuevo', 'Completá los campos requeridos (*)', 'error');
+  }
+
+  const plan = planesCache.find(p => p.pid === planId);
+  const expire = addMonths(jdate, plan?.meses || 1);
+
+  showLoading(true);
+  try {
+    await sb.insert('gm_usuarios', {
+      userid: mid, username: nombre, gender: genero,
+      mobile: tel, email, dob, joining_date: jdate,
+      street_name: direccion, city: ciudad, zipcode: cp, state: depto
+    });
+
+    await sb.insert('gm_pagos', {
+      uid: mid, pid: planId,
+      fecha_pago: jdate, expire, renewal: true,
+      paid_date: jdate
+    });
+
+    showAlert('alertNuevo', 'Miembro registrado correctamente');
+    limpiarNuevoRegistro();
+  } catch(e) {
+    showAlert('alertNuevo', 'Error: ' + e.message, 'error');
+  } finally { showLoading(false); }
+}
+
+function limpiarNuevoRegistro() {
+  ['nr_nombre','nr_direccion','nr_ciudad','nr_cp','nr_depto','nr_tel','nr_email'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('nr_genero').value = '';
+  document.getElementById('nr_dob').value = '';
+  document.getElementById('nr_plan').value = '';
+  document.getElementById('planDetailBox').style.display = 'none';
+  document.getElementById('nr_mid').value = Date.now().toString().slice(-10);
+}
+
+// ===== PAGOS =====
+async function loadPagos() {
+  showLoading(true);
+  try {
+    const pagos = await sb.select('gm_pagos', 'select=*,gm_usuarios(username,mobile,email,gender)&renewal=eq.true&order=expire.asc') || [];
+    const tbody = document.getElementById('pagosTableBody');
+    if (!pagos.length) {
+      tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">💳</div><p>No hay pagos registrados</p></div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = pagos.map((p, i) => {
+      const u = p.gm_usuarios || {};
+      const hoy = new Date().toISOString().split('T')[0];
+      const vencido = p.expire < hoy;
+      const badge = vencido ? '<span class="badge badge-red">Vencido</span>' : '<span class="badge badge-green">Activo</span>';
+      return `<tr>
+        <td>${i+1}</td>
+        <td>${formatDate(p.expire)} ${badge}</td>
+        <td>${u.username || '-'}</td>
+        <td><code style="font-size:.8rem;color:var(--accent)">${p.uid}</code></td>
+        <td>${u.mobile || '-'}</td>
+        <td>${u.email || '-'}</td>
+        <td>${u.gender || '-'}</td>
+        <td><button class="btn btn-primary btn-sm" onclick="abrirModalPago('${p.uid}','${p.pid}')">💳 Pago</button></td>
+      </tr>`;
+    }).join('');
+  } catch(e) { console.error(e); }
+  finally { showLoading(false); }
+}
+
+async function abrirModalPago(uid, planid) {
+  document.getElementById('mp_uid').value = uid;
+  document.getElementById('mp_planid').value = planid;
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('mp_fecha').value = today;
+
+  // Cargar info usuario
+  try {
+    const u = await sb.select('gm_usuarios', 'select=username,mobile&userid=eq.' + uid);
+    if (u && u[0]) {
+      document.getElementById('mp_info').innerHTML = `
+        <div class="info-chip">
+          <div class="info-chip-label">Miembro</div>
+          <div class="info-chip-value">${u[0].username} — ${u[0].mobile}</div>
+        </div>`;
+    }
+  } catch(e) {}
+
+  // Llenar planes
+  const sel = document.getElementById('mp_plan');
+  sel.innerHTML = planesCache.map(p => `<option value="${p.pid}" ${p.pid === planid ? 'selected' : ''}>${p.nombre} (${p.meses} mes${p.meses>1?'es':''}) - ₡${p.costo.toLocaleString('es-CR')}</option>`).join('');
+  updatePlanInfo();
+  openModal('modalPago');
+}
+
+function updatePlanInfo() {
+  const pid = document.getElementById('mp_plan').value;
+  const plan = planesCache.find(p => p.pid === pid);
+  if (plan) {
+    document.getElementById('mp_plan_detail').innerHTML = `
+      <div class="info-chip" style="margin-bottom:0">
+        <div class="info-chip-label">Vencimiento estimado</div>
+        <div class="info-chip-value" style="color:var(--accent)">${addMonths(document.getElementById('mp_fecha').value, plan.meses)}</div>
+      </div>`;
+  }
+}
+
+async function procesarPago() {
+  const uid = document.getElementById('mp_uid').value;
+  const pid = document.getElementById('mp_plan').value;
+  const fecha = document.getElementById('mp_fecha').value;
+  if (!uid || !pid || !fecha) return showAlert('alertModalPago', 'Completá todos los campos', 'error');
+
+  const plan = planesCache.find(p => p.pid === pid);
+  const expire = addMonths(fecha, plan?.meses || 1);
+
+  showLoading(true);
+  try {
+    // Desactivar renovación anterior
+    await sb.update('gm_pagos', 'uid=eq.' + uid + '&renewal=eq.true', { renewal: false });
+    // Insertar nuevo pago
+    await sb.insert('gm_pagos', { uid, pid, fecha_pago: fecha, paid_date: fecha, expire, renewal: true });
+    closeModal('modalPago');
+    showAlert('alertPago', 'Pago registrado correctamente');
+    loadPagos();
+  } catch(e) {
+    showAlert('alertModalPago', 'Error: ' + e.message, 'error');
+  } finally { showLoading(false); }
+}
+
+// ===== VER MIEMBROS =====
+let allMiembros = [];
+async function loadVerMiembros() {
+  showLoading(true);
+  try {
+    allMiembros = await sb.select('gm_usuarios', 'select=*,gm_pagos(expire,pid,gm_planes(nombre))&gm_pagos.renewal=eq.true&order=joining_date.asc') || [];
+    renderMiembrosTable(allMiembros);
+  } catch(e) { console.error(e); }
+  finally { showLoading(false); }
+}
+
+function filtrarMiembros() {
+  const q = document.getElementById('searchMiembros').value.toLowerCase();
+  renderMiembrosTable(allMiembros.filter(m => (m.username||'').toLowerCase().includes(q)));
+}
+
+function renderMiembrosTable(data) {
+  const tbody = document.getElementById('miembrosTableBody');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="empty-state-icon">👥</div><p>Sin resultados</p></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map((m, i) => {
+    const pago = m.gm_pagos?.[0] || {};
+    const hoy = new Date().toISOString().split('T')[0];
+    const vencido = pago.expire && pago.expire < hoy;
+    const badge = pago.expire
+      ? (vencido ? '<span class="badge badge-red">Vencido</span>' : '<span class="badge badge-green">Activo</span>')
+      : '<span class="badge badge-yellow">Sin pago</span>';
+    return `<tr>
+      <td>${i+1}</td>
+      <td>${pago.expire ? formatDate(pago.expire) : '-'} ${badge}</td>
+      <td><code style="font-size:.8rem;color:var(--accent)">${m.userid}</code></td>
+      <td><strong>${m.username}</strong></td>
+      <td>${m.mobile || '-'}</td>
+      <td>${m.email || '-'}</td>
+      <td>${m.gender || '-'}</td>
+      <td>${formatDate(m.joining_date)}</td>
+      <td><button class="btn btn-secondary btn-sm" onclick="verDetalleMiembro('${m.userid}')">👁 Ver Todo</button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function verDetalleMiembro(uid) {
+  showLoading(true);
+  try {
+    const data = await sb.select('gm_usuarios', `select=*,gm_pagos(expire,paid_date,gm_planes(nombre,costo,meses,descripcion)),gm_salud(*)&userid=eq.${uid}&gm_pagos.renewal=eq.true`);
+    if (!data || !data[0]) return;
+    const m = data[0];
+    const pago = m.gm_pagos?.[0] || {};
+    const plan = pago.gm_planes || {};
+    const salud = m.gm_salud?.[0] || {};
+
+    currentDetalleMiembro = { m, pago, plan };
+
+    document.getElementById('detalleMiembroContent').innerHTML = [
+      buildChip('ID Membresía', m.userid),
+      buildChip('Nombre', m.username),
+      buildChip('Género', m.gender),
+      buildChip('Teléfono', m.mobile),
+      buildChip('Correo', m.email),
+      buildChip('F. Nacimiento', m.dob),
+      buildChip('F. Ingreso', formatDate(m.joining_date)),
+      buildChip('Dirección', m.street_name),
+      buildChip('Ciudad', m.city),
+      buildChip('Departamento', m.state),
+      buildChip('Plan', plan.nombre || '-'),
+      buildChip('Costo Plan', plan.costo ? '₡' + plan.costo.toLocaleString('es-CR') : '-'),
+      buildChip('Validez', plan.meses ? plan.meses + ' mes(es)' : '-'),
+      buildChip('F. Pago', formatDate(pago.paid_date)),
+      buildChip('Vencimiento', formatDate(pago.expire)),
+      buildChip('Calorías', salud.calorias || '-'),
+      buildChip('Altura', salud.altura ? salud.altura + ' cm' : '-'),
+      buildChip('Peso', salud.peso ? salud.peso + ' kg' : '-'),
+      buildChip('% Grasa', salud.grasa || '-'),
+    ].join('');
+
+    openModal('modalDetalleMiembro');
+  } catch(e) { alert('Error: ' + e.message); }
+  finally { showLoading(false); }
+}
+
+function imprimirFactura() {
+  if (!currentDetalleMiembro) return;
+  const { m, pago, plan } = currentDetalleMiembro;
+  const win = window.open('', '', 'width=640,height=700');
+  win.document.write(`
+    <html><head><title>Factura</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 30px; color: #222; }
+      .logo { font-size: 1.5rem; font-weight: 800; margin-bottom: 20px; }
+      .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+      .total { font-weight: 800; font-size: 1.1rem; margin-top: 16px; text-align: right; }
+      hr { margin: 20px 0; }
+    </style></head><body>
+    <div class="logo">🏋️ GYM MASTER</div>
+    <hr>
+    <div class="row"><span>No. Serie:</span><span>${pago.et_id || Date.now()}</span></div>
+    <div class="row"><span>Fecha:</span><span>${formatDate(pago.paid_date)}</span></div>
+    <div class="row"><span>Miembro:</span><span>${m.username}</span></div>
+    <div class="row"><span>ID:</span><span>${m.userid}</span></div>
+    <div class="row"><span>Plan:</span><span>${plan.nombre || '-'}</span></div>
+    <div class="row"><span>Validez:</span><span>${plan.meses || '-'} mes(es)</span></div>
+    <div class="row"><span>Vencimiento:</span><span>${formatDate(pago.expire)}</span></div>
+    <div class="total">Total: ₡${(plan.costo || 0).toLocaleString('es-CR')}</div>
+    <hr>
+    <p style="text-align:center;color:#999;font-size:.8rem;">Firma: _____________________</p>
+    <script>window.print();<\/script>
+    </body></html>`);
+  win.document.close();
+}
+
+// ===== EDITAR MIEMBROS =====
+async function loadEditarMiembros() {
+  showLoading(true);
+  try {
+    const miembros = await sb.select('gm_usuarios', 'select=*,gm_pagos(expire,pid,gm_planes(nombre))&gm_pagos.renewal=eq.true') || [];
+    const tbody = document.getElementById('editarTableBody');
+    if (!miembros.length) {
+      tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">👥</div><p>Sin miembros</p></div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = miembros.map((m, i) => {
+      const pago = m.gm_pagos?.[0] || {};
+      const hoy = new Date().toISOString().split('T')[0];
+      const vencido = pago.expire && pago.expire < hoy;
+      return `<tr>
+        <td>${i+1}</td>
+        <td><code style="font-size:.8rem;color:var(--accent)">${m.userid}</code></td>
+        <td>${m.username}</td>
+        <td>${m.mobile || '-'}</td>
+        <td>${m.email || '-'}</td>
+        <td>${pago.gm_planes?.nombre || '-'}</td>
+        <td>${vencido ? '<span class="badge badge-red">Vencido</span>' : '<span class="badge badge-green">Activo</span>'}</td>
+        <td>
+          <div class="td-actions">
+            <button class="btn btn-secondary btn-sm" onclick="abrirEditarMiembro('${m.userid}')">✏️</button>
+            <button class="btn btn-danger btn-sm" onclick="confirmarEliminarMiembro('${m.userid}')">🗑️</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) { console.error(e); }
+  finally { showLoading(false); }
+}
+
+async function abrirEditarMiembro(uid) {
+  const m = allMiembros.find(x => x.userid === uid);
+  if (!m) {
+    try {
+      const data = await sb.select('gm_usuarios', 'select=*&userid=eq.' + uid);
+      if (!data?.[0]) return;
+      _fillEditarModal(data[0]);
+    } catch(e) {}
+  } else {
+    _fillEditarModal(m);
+  }
+  openModal('modalEditarMiembro');
+}
+
+function _fillEditarModal(m) {
+  document.getElementById('em_id').value = m.userid;
+  document.getElementById('em_nombre').value = m.username || '';
+  document.getElementById('em_tel').value = m.mobile || '';
+  document.getElementById('em_email').value = m.email || '';
+  document.getElementById('em_genero').value = m.gender || 'Hombre';
+}
+
+async function guardarEdicionMiembro() {
+  const uid = document.getElementById('em_id').value;
+  const nombre = document.getElementById('em_nombre').value.trim();
+  const tel = document.getElementById('em_tel').value.trim();
+  const email = document.getElementById('em_email').value.trim();
+  const genero = document.getElementById('em_genero').value;
+  if (!nombre) return showAlert('alertEditarMiembro', 'El nombre es requerido', 'error');
+  showLoading(true);
+  try {
+    await sb.update('gm_usuarios', 'userid=eq.' + uid, { username: nombre, mobile: tel, email, gender: genero });
+    closeModal('modalEditarMiembro');
+    loadEditarMiembros();
+  } catch(e) {
+    showAlert('alertEditarMiembro', 'Error: ' + e.message, 'error');
+  } finally { showLoading(false); }
+}
+
+function confirmarEliminarMiembro(uid) {
+  document.getElementById('confirmTitle').textContent = '¿Eliminar este miembro?';
+  document.getElementById('confirmMsg').textContent = 'Se eliminarán todos sus pagos asociados.';
+  document.getElementById('confirmBtn').onclick = async () => {
+    showLoading(true);
+    try {
+      await sb.delete('gm_pagos', 'uid=eq.' + uid);
+      await sb.delete('gm_salud', 'uid=eq.' + uid);
+      await sb.delete('gm_usuarios', 'userid=eq.' + uid);
+      closeModal('modalConfirmar');
+      loadEditarMiembros();
+    } catch(e) { alert('Error: ' + e.message); }
+    finally { showLoading(false); }
+  };
+  openModal('modalConfirmar');
+}
+
+// ===== ESTADO DE SALUD =====
+async function loadEstadoSalud() {
+  showLoading(true);
+  try {
+    const miembros = await sb.select('gm_usuarios', 'select=userid,username,mobile,dob,gender,joining_date&order=username.asc') || [];
+    const tbody = document.getElementById('saludTableBody');
+    if (!miembros.length) {
+      tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="empty-state-icon">❤️</div><p>Sin miembros</p></div></td></tr>';
+      return;
+    }
+
+    // Cargar todos los datos de salud de una sola vez
+    const saludData = await sb.select('gm_salud', 'select=*') || [];
+    const saludMap = {};
+    saludData.forEach(s => saludMap[s.uid] = s);
+
+    tbody.innerHTML = miembros.map((m, i) => {
+      const s = saludMap[m.userid] || {};
+
+      // Calcular IMC
+      let imcVal = null, imcTexto = '-', imcColor = 'var(--text-muted)', imcCat = '-', imcCatColor = 'var(--text-muted)';
+      if (s.peso && s.altura) {
+        imcVal = s.peso / Math.pow(s.altura / 100, 2);
+        imcTexto = imcVal.toFixed(1);
+        if (imcVal < 16)       { imcColor = '#ff4444'; imcCat = 'Delgadez severa'; imcCatColor = '#ff4444'; }
+        else if (imcVal < 18.5){ imcColor = '#44aaff'; imcCat = 'Bajo peso';       imcCatColor = '#44aaff'; }
+        else if (imcVal < 25)  { imcColor = '#7fff00'; imcCat = '✅ Normal';        imcCatColor = '#7fff00'; }
+        else if (imcVal < 30)  { imcColor = '#ffaa00'; imcCat = '⚠️ Sobrepeso';    imcCatColor = '#ffaa00'; }
+        else if (imcVal < 35)  { imcColor = '#ff7700'; imcCat = 'Obesidad I';      imcCatColor = '#ff7700'; }
+        else                   { imcColor = '#ff4444'; imcCat = 'Obesidad II+';    imcCatColor = '#ff4444'; }
+      }
+
+      // Calcular progreso
+      let progresoHtml = '-';
+      if (s.peso && s.peso_objetivo) {
+        const diff = Math.abs(parseFloat(s.peso) - parseFloat(s.peso_objetivo));
+        const bajando = parseFloat(s.peso_objetivo) < parseFloat(s.peso);
+        const pct = Math.max(0, Math.min(100, 100 - (diff / parseFloat(s.peso)) * 100));
+        const barColor = bajando ? '#ff7700' : '#7fff00';
+        progresoHtml = \`<div style="min-width:90px">
+          <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:3px;">${bajando ? '↓' : '↑'} Obj: <strong style="color:var(--accent)">\${s.peso_objetivo}kg</strong></div>
+          <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+            <div style="width:\${pct.toFixed(0)}%;height:100%;background:\${barColor};border-radius:3px;"></div>
+          </div>
+          <div style="font-size:.7rem;color:var(--text-muted);margin-top:2px;">Faltan \${diff.toFixed(1)} kg</div>
+        </div>\`;
+      }
+
+      const pesoTexto = s.peso ? \`<strong style="color:var(--text)">\${s.peso}</strong> <span style="color:var(--text-muted);font-size:.75rem">kg</span>\` : '-';
+      const alturaTexto = s.altura ? \`\${s.altura} <span style="color:var(--text-muted);font-size:.75rem">cm</span>\` : '-';
+      const grasaTexto = s.grasa ? \`\${s.grasa}<span style="color:var(--text-muted);font-size:.75rem">%</span>\` : '-';
+      const objetivoTexto = s.objetivo ? \`<span style="font-size:.78rem;background:rgba(127,255,0,.1);color:var(--accent);padding:2px 7px;border-radius:999px;">\${s.objetivo}</span>\` : '-';
+
+      return \`<tr>
+        <td>\${i+1}</td>
+        <td>
+          <div style="font-weight:600">\${m.username}</div>
+          <div style="font-size:.75rem;color:var(--text-muted)">\${m.mobile || ''}</div>
+        </td>
+        <td>\${pesoTexto}</td>
+        <td>\${alturaTexto}</td>
+        <td><strong style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;color:\${imcColor}">\${imcTexto}</strong></td>
+        <td><span style="font-size:.78rem;font-weight:700;color:\${imcCatColor}">\${imcCat}</span></td>
+        <td>\${objetivoTexto}</td>
+        <td>\${progresoHtml}</td>
+        <td>\${grasaTexto}</td>
+        <td>
+          <button class="btn btn-secondary btn-sm" onclick="abrirSalud('\${m.userid}','\${m.username}','\${m.dob || ''}','\${m.joining_date || ''}','\${m.gender || ''}')">
+            ✏️ Editar
+          </button>
+        </td>
+      </tr>\`;
+    }).join('');
+  } catch(e) {
+    console.error('Error salud:', e);
+    document.getElementById('saludTableBody').innerHTML =
+      '<tr><td colspan="10" style="color:var(--danger);padding:16px">Error al cargar: ' + e.message + '</td></tr>';
+  }
+  finally { showLoading(false); }
+}
+
+async function abrirSalud(uid, nombre, dob, join, genero) {
+  document.getElementById('sal_uid').value = uid;
+  document.getElementById('sal_info').innerHTML =
+    `👤 <strong>${nombre}</strong> &nbsp;|&nbsp; ${genero} &nbsp;|&nbsp; Nac: ${dob || '-'} &nbsp;|&nbsp; Ingreso: ${formatDate(join)}`;
+  try {
+    const sal = await sb.select('gm_salud', 'select=*&uid=eq.' + uid);
+    if (sal && sal[0]) {
+      document.getElementById('sal_cal').value = sal[0].calorias || '';
+      document.getElementById('sal_altura').value = sal[0].altura || '';
+      document.getElementById('sal_peso').value = sal[0].peso || '';
+      document.getElementById('sal_grasa').value = sal[0].grasa || '';
+      document.getElementById('sal_obs').value = sal[0].observaciones || '';
+      document.getElementById('sal_peso_obj').value = sal[0].peso_objetivo || '';
+      document.getElementById('sal_objetivo').value = sal[0].objetivo || '';
+    } else {
+      ['sal_cal','sal_altura','sal_peso','sal_grasa','sal_obs','sal_peso_obj'].forEach(
+        id => document.getElementById(id).value = '');
+      document.getElementById('sal_objetivo').value = '';
+    }
+  } catch(e) {}
+  calcularIMC();
+  openModal('modalSalud');
+}
+
+async function guardarSalud() {
+  const uid = document.getElementById('sal_uid').value;
+  const data = {
+    uid,
+    calorias: document.getElementById('sal_cal').value || null,
+    altura: document.getElementById('sal_altura').value || null,
+    peso: document.getElementById('sal_peso').value || null,
+    grasa: document.getElementById('sal_grasa').value || null,
+    observaciones: document.getElementById('sal_obs').value || null,
+    peso_objetivo: document.getElementById('sal_peso_obj').value || null,
+    objetivo: document.getElementById('sal_objetivo').value || null
+  };
+  showLoading(true);
+  try {
+    const existing = await sb.select('gm_salud', 'select=id&uid=eq.' + uid);
+    if (existing && existing.length) {
+      await sb.update('gm_salud', 'uid=eq.' + uid, data);
+    } else {
+      await sb.insert('gm_salud', data);
+    }
+    // Guardar peso en historial si hay peso
+    if (data.peso) await guardarPesoHistorial(uid, data.peso);
+    closeModal('modalSalud');
+    loadEstadoSalud();
+    showAlert('alertPago', '✅ Estado de salud guardado correctamente');
+  } catch(e) {
+    showAlert('alertSalud', 'Error: ' + e.message, 'error');
+  } finally { showLoading(false); }
+}
+
+// ===== OVERVIEW =====
+async function cargarMiembrosMes() {
+  const mes = String(document.getElementById('filtroMes').value).padStart(2, '0');
+  const anio = document.getElementById('filtroAnio').value;
+  showLoading(true);
+  try {
+    const data = await sb.select('gm_usuarios', `select=*,gm_pagos(gm_planes(nombre))&gm_pagos.renewal=eq.true&joining_date=gte.${anio}-${mes}-01&joining_date=lte.${anio}-${mes}-31&order=joining_date.asc`) || [];
+    const tbody = document.getElementById('miembrosMesBody');
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><p>Sin datos para este mes</p></div></td></tr>'; return; }
+    tbody.innerHTML = data.map((m, i) => `
+      <tr>
+        <td>${i+1}</td>
+        <td><code style="font-size:.8rem;color:var(--accent)">${m.userid}</code></td>
+        <td>${m.username}</td>
+        <td>${m.gender || '-'}</td>
+        <td>${m.mobile || '-'}</td>
+        <td>${formatDate(m.joining_date)}</td>
+        <td>${m.gm_pagos?.[0]?.gm_planes?.nombre || '-'}</td>
+      </tr>
+    `).join('');
+  } catch(e) {} finally { showLoading(false); }
+}
+
+async function cargarMiembrosAnio() {
+  const anio = document.getElementById('filtroAnioFull').value;
+  showLoading(true);
+  try {
+    const data = await sb.select('gm_usuarios', `select=*,gm_pagos(gm_planes(nombre))&gm_pagos.renewal=eq.true&joining_date=gte.${anio}-01-01&joining_date=lte.${anio}-12-31&order=joining_date.asc`) || [];
+    const tbody = document.getElementById('miembrosAnioBody');
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><p>Sin datos para este año</p></div></td></tr>'; return; }
+    tbody.innerHTML = data.map((m, i) => `
+      <tr><td>${i+1}</td><td><code style="font-size:.8rem;color:var(--accent)">${m.userid}</code></td><td>${m.username}</td><td>${m.gender||'-'}</td><td>${m.mobile||'-'}</td><td>${formatDate(m.joining_date)}</td><td>${m.gm_pagos?.[0]?.gm_planes?.nombre||'-'}</td></tr>
+    `).join('');
+  } catch(e) {} finally { showLoading(false); }
+}
+
+async function cargarIngresosMes() {
+  const mes = String(document.getElementById('filtroMesIng').value).padStart(2, '0');
+  const anio = document.getElementById('filtroAnioIng').value;
+  showLoading(true);
+  try {
+    const data = await sb.select('gm_pagos', `select=*,gm_usuarios(username,mobile,gender),gm_planes(nombre,costo,meses)&paid_date=gte.${anio}-${mes}-01&paid_date=lte.${anio}-${mes}-31&order=paid_date.asc`) || [];
+    const tbody = document.getElementById('ingresosMesBody');
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><p>Sin datos para este mes</p></div></td></tr>'; document.getElementById('totalIngresos').textContent = ''; return; }
+    let total = 0;
+    tbody.innerHTML = data.map((p, i) => {
+      const u = p.gm_usuarios || {};
+      const pl = p.gm_planes || {};
+      total += pl.costo || 0;
+      return `<tr>
+        <td>${i+1}</td><td><code style="font-size:.8rem;color:var(--accent)">${p.uid}</code></td>
+        <td>${u.username||'-'}</td><td>${u.mobile||'-'}</td><td>${u.gender||'-'}</td>
+        <td>${formatDate(p.paid_date)}</td><td>${formatDate(p.expire)}</td>
+        <td>${pl.nombre||'-'}</td>
+        <td style="color:var(--accent);font-weight:700">₡${(pl.costo||0).toLocaleString('es-CR')}</td>
+        <td>${pl.meses||'-'} mes${(pl.meses||0)>1?'es':''}</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('totalIngresos').textContent = `Total: ₡${total.toLocaleString('es-CR')}`;
+  } catch(e) {} finally { showLoading(false); }
+}
+
+// ===== RUTINAS =====
+async function loadVerRutinas() {
+  showLoading(true);
+  try {
+    const rutinas = await sb.select('gm_rutinas', 'select=*') || [];
+    const tbody = document.getElementById('rutinasTableBody');
+    if (!rutinas.length) {
+      tbody.innerHTML = '<tr><td colspan="3"><div class="empty-state"><div class="empty-state-icon">🏋️</div><p>No hay rutinas registradas</p></div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = rutinas.map((r, i) => `
+      <tr>
+        <td>${i+1}</td>
+        <td>${r.nombre}</td>
+        <td><button class="btn btn-secondary btn-sm" onclick="verDetalleRutina('${r.id}')">👁 Ver Detalles</button></td>
+      </tr>
+    `).join('');
+  } catch(e) {} finally { showLoading(false); }
+}
+
+async function verDetalleRutina(id) {
+  try {
+    const data = await sb.select('gm_rutinas', 'select=*&id=eq.' + id);
+    if (!data?.[0]) return;
+    const r = data[0];
+    document.getElementById('detalleRutinaTitulo').textContent = '🏋️ ' + r.nombre;
+    const dias = [r.dia1, r.dia2, r.dia3, r.dia4, r.dia5, r.dia6];
+    document.getElementById('detalleRutinaContent').innerHTML = dias.map((d, i) => d ? `
+      <div class="info-chip" style="margin-bottom:10px;">
+        <div class="info-chip-label">Día ${i+1}</div>
+        <div class="info-chip-value" style="white-space:pre-wrap">${d}</div>
+      </div>
+    ` : '').join('');
+    openModal('modalDetalleRutina');
+  } catch(e) {}
+}
+
+async function loadEditarRutinas() {
+  showLoading(true);
+  try {
+    const rutinas = await sb.select('gm_rutinas', 'select=*') || [];
+    const tbody = document.getElementById('editarRutinasBody');
+    if (!rutinas.length) {
+      tbody.innerHTML = '<tr><td colspan="3"><div class="empty-state"><p>No hay rutinas</p></div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = rutinas.map((r, i) => `
+      <tr>
+        <td>${i+1}</td>
+        <td>${r.nombre}</td>
+        <td>
+          <div class="td-actions">
+            <button class="btn btn-secondary btn-sm" onclick="abrirEditarRutina('${r.id}')">✏️ Editar</button>
+            <button class="btn btn-danger btn-sm" onclick="confirmarEliminarRutina('${r.id}')">🗑️</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) {} finally { showLoading(false); }
+}
+
+async function guardarRutina() {
+  const nombre = document.getElementById('rut_nombre').value.trim();
+  if (!nombre) return showAlert('alertRutina', 'El nombre es requerido', 'error');
+  const data = {
+    nombre,
+    dia1: document.getElementById('rut_d1').value,
+    dia2: document.getElementById('rut_d2').value,
+    dia3: document.getElementById('rut_d3').value,
+    dia4: document.getElementById('rut_d4').value,
+    dia5: document.getElementById('rut_d5').value,
+    dia6: document.getElementById('rut_d6').value
+  };
+  showLoading(true);
+  try {
+    await sb.insert('gm_rutinas', data);
+    showAlert('alertRutina', 'Rutina guardada correctamente');
+    limpiarRutina();
+    setTimeout(() => showScreen('ver-rutinas'), 1200);
+  } catch(e) {
+    showAlert('alertRutina', 'Error: ' + e.message, 'error');
+  } finally { showLoading(false); }
+}
+
+function limpiarRutina() {
+  ['rut_nombre','rut_d1','rut_d2','rut_d3','rut_d4','rut_d5','rut_d6'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+}
+
+async function abrirEditarRutina(id) {
+  try {
+    const data = await sb.select('gm_rutinas', 'select=*&id=eq.' + id);
+    if (!data?.[0]) return;
+    const r = data[0];
+    document.getElementById('er_id').value = id;
+    document.getElementById('er_nombre').value = r.nombre || '';
+    document.getElementById('er_d1').value = r.dia1 || '';
+    document.getElementById('er_d2').value = r.dia2 || '';
+    document.getElementById('er_d3').value = r.dia3 || '';
+    document.getElementById('er_d4').value = r.dia4 || '';
+    document.getElementById('er_d5').value = r.dia5 || '';
+    document.getElementById('er_d6').value = r.dia6 || '';
+    openModal('modalEditarRutina');
+  } catch(e) {}
+}
+
+async function guardarEdicionRutina() {
+  const id = document.getElementById('er_id').value;
+  const nombre = document.getElementById('er_nombre').value.trim();
+  if (!nombre) return showAlert('alertEditRutina', 'Nombre requerido', 'error');
+  const data = {
+    nombre,
+    dia1: document.getElementById('er_d1').value,
+    dia2: document.getElementById('er_d2').value,
+    dia3: document.getElementById('er_d3').value,
+    dia4: document.getElementById('er_d4').value,
+    dia5: document.getElementById('er_d5').value,
+    dia6: document.getElementById('er_d6').value
+  };
+  showLoading(true);
+  try {
+    await sb.update('gm_rutinas', 'id=eq.' + id, data);
+    closeModal('modalEditarRutina');
+    loadEditarRutinas();
+  } catch(e) {
+    showAlert('alertEditRutina', 'Error: ' + e.message, 'error');
+  } finally { showLoading(false); }
+}
+
+function confirmarEliminarRutina(id) {
+  document.getElementById('confirmTitle').textContent = '¿Eliminar esta rutina?';
+  document.getElementById('confirmMsg').textContent = 'Esta acción no se puede deshacer.';
+  document.getElementById('confirmBtn').onclick = async () => {
+    showLoading(true);
+    try {
+      await sb.delete('gm_rutinas', 'id=eq.' + id);
+      closeModal('modalConfirmar');
+      loadEditarRutinas();
+    } catch(e) { alert('Error: ' + e.message); }
+    finally { showLoading(false); }
+  };
+  openModal('modalConfirmar');
+}
+
+// ===== PERFIL =====
+function guardarPerfil() {
+  showAlert('alertPerfil', 'Perfil actualizado (requiere nuevo inicio de sesión)');
+}
+
+async function crearClienteAcceso(usuario, pass, nombre) {
+  const passHash = btoa(pass + '_gm_salt');
+  await sb.insert('gm_clientes', { usuario, pass_hash: passHash, nombre, activo: true });
+}
+
+function openModalCambiarPass() { openModal('modalCambiarPass'); }
+function cambiarPassword() {
+  const actual = document.getElementById('pass_actual').value;
+  const nueva = document.getElementById('pass_nueva').value;
+  const conf = document.getElementById('pass_confirmar').value;
+  if (actual !== ADMIN_PASS) return showAlert('alertPass', 'Contraseña actual incorrecta', 'error');
+  if (nueva !== conf) return showAlert('alertPass', 'Las contraseñas no coinciden', 'error');
+  if (nueva.length < 4) return showAlert('alertPass', 'Mínimo 4 caracteres', 'error');
+  showAlert('alertPass', 'Contraseña cambiada correctamente');
+  setTimeout(() => closeModal('modalCambiarPass'), 1500);
+}
+
+
+
+
+// ===== RENDER HELPERS NUTRICION =====
+function renderNutricionDias(plan) {
+  const mealIcons = { 'desayuno': '🌅', 'almuerzo': '☀️', 'merienda': '🍎', 'cena': '🌙', 'pre-entreno': '⚡', 'post-entreno': '💪' };
+  const mealColors = { 'desayuno': 'desayuno', 'almuerzo': 'almuerzo', 'merienda': 'merienda', 'cena': 'cena' };
+  return Object.entries(plan).map(([dia, comidas]) => {
+    const comidasArr = comidas.split('|').filter(c => c.trim());
+    const rowsHtml = comidasArr.map(c => {
+      const partes = c.split(':');
+      const tipoRaw = partes[0].trim().toLowerCase();
+      const desc = partes.slice(1).join(':').trim();
+      const icon = Object.entries(mealIcons).find(([k]) => tipoRaw.includes(k))?.[1] || '🍽️';
+      const colorClass = Object.entries(mealColors).find(([k]) => tipoRaw.includes(k))?.[1] || 'cena';
+      return `<div class="ai-meal-row">
+        <div class="ai-meal-time ${colorClass}">${icon} ${partes[0].trim()}</div>
+        <div class="ai-meal-desc">${desc || tipoRaw}</div>
+      </div>`;
+    }).join('');
+    return `<div class="ai-meal-card">
+      <div class="ai-meal-header"><span class="ai-meal-day">📅 ${dia}</span></div>
+      <div class="ai-meal-body">${rowsHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderNutricionCompleto(data) {
+  const diasHtml = renderNutricionDias(data.plan_semanal);
+
+  const supArr = (data.suplementos || '').split('\n').filter(s => s.trim());
+  const supHtml = supArr.length
+    ? supArr.map(s => `<div class="ai-sup-item"><span style="color:var(--warning)">💊</span><span>${s.replace(/^[-•*]\s*/,'').trim()}</span></div>`).join('')
+    : `<div class="ai-sup-item"><span style="color:var(--warning)">💊</span><span>${data.suplementos}</span></div>`;
+
+  const consArr = (data.consejos || '').split('\n').filter(c => c.trim());
+  const consHtml = consArr.length
+    ? consArr.map(c => `<div class="ai-tip-item"><span class="ai-tip-dot">→</span><span>${c.replace(/^[-•*\d.)]\s*/,'').trim()}</span></div>`).join('')
+    : `<div class="ai-tip-item"><span class="ai-tip-dot">→</span><span>${data.consejos}</span></div>`;
+
+  return `
+    <div class="ai-cal-total">
+      <div>
+        <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);">Calorías diarias</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:2rem;font-weight:800;color:var(--warning);">${data.calorias_diarias} kcal</div>
+      </div>
+      <div style="text-align:right;font-size:.82rem;color:var(--text-muted);">
+        <div>Grasas: <strong style="color:var(--text)">${data.macros.grasas}</strong></div>
+      </div>
+    </div>
+    <div class="ai-macros-grid">
+      <div class="ai-macro-card">
+        <div class="ai-macro-value" style="color:var(--accent)">${data.macros.proteinas}</div>
+        <div class="ai-macro-label">💪 Proteínas</div>
+      </div>
+      <div class="ai-macro-card">
+        <div class="ai-macro-value" style="color:var(--info)">${data.macros.carbohidratos}</div>
+        <div class="ai-macro-label">⚡ Carbos</div>
+      </div>
+      <div class="ai-macro-card">
+        <div class="ai-macro-value" style="color:var(--warning)">${data.macros.grasas}</div>
+        <div class="ai-macro-label">🧈 Grasas</div>
+      </div>
+    </div>
+    ${diasHtml}
+    <div class="ai-sup-card">
+      <div class="ai-sup-label">💊 Suplementos recomendados</div>
+      ${supHtml}
+    </div>
+    <div class="ai-water-card">
+      <span style="font-size:1.8rem">💧</span>
+      <div><strong>Hidratación:</strong> ${data.hidratacion}</div>
+    </div>
+    <div class="ai-tip-card">
+      <div class="ai-tip-label">💡 Consejos nutricionales</div>
+      ${consHtml}
+    </div>
+  `;
+}
+
+// ===== DETECTOR DE COMIDAS =====
+let fotoBase64 = null;
+let fotoMimeType = 'image/jpeg';
+
+async function initDetectorComida() {
+  document.getElementById('detectorResultado').style.display = 'none';
+  document.getElementById('fotoPreview').style.display = 'none';
+  document.getElementById('uploadZona').style.display = 'block';
+  fotoBase64 = null;
+  try {
+    const miembros = await sb.select('gm_usuarios', 'select=userid,username&order=username.asc') || [];
+    const sel = document.getElementById('det_miembro');
+    sel.innerHTML = '<option value="">-- Sin asignar --</option>' +
+      miembros.map(m => `<option value="${m.userid}">${m.username}</option>`).join('');
+  } catch(e) {}
+}
+
+function previsualizarFoto(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  fotoMimeType = file.type || 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    fotoBase64 = e.target.result.split(',')[1];
+    document.getElementById('fotoImg').src = e.target.result;
+    document.getElementById('fotoPreview').style.display = 'block';
+    document.getElementById('uploadZona').style.display = 'none';
+    document.getElementById('detectorResultado').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleDrop(event) {
+  event.preventDefault();
+  const file = event.dataTransfer.files[0];
+  if (!file || !file.type.startsWith('image/')) return;
+  const fakeEvent = { target: { files: [file] } };
+  previsualizarFoto(fakeEvent);
+}
+
+function cambiarFoto() {
+  fotoBase64 = null;
+  document.getElementById('fotoComida').value = '';
+  document.getElementById('fotoPreview').style.display = 'none';
+  document.getElementById('uploadZona').style.display = 'block';
+  document.getElementById('detectorResultado').style.display = 'none';
+}
+
+async function analizarComida() {
+  if (!fotoBase64) return showAlert('alertDetector', 'Primero subí una foto', 'error');
+
+  const btn = document.getElementById('btnAnalizar');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Analizando...';
+
+  const prompt = `Eres un nutricionista experto con visión computacional. Analiza esta imagen de comida y proporciona un análisis nutricional detallado.
+
+RESPONDE SOLO con este JSON, sin texto adicional, sin markdown:
+{
+  "nombre_comida": "Nombre descriptivo de la comida identificada",
+  "confianza": "Alta/Media/Baja",
+  "porcion_estimada": "ej: 1 plato (350g aprox)",
+  "calorias": "número aproximado",
+  "macros": {
+    "proteinas": "Xg",
+    "carbohidratos": "Xg",
+    "grasas": "Xg",
+    "fibra": "Xg"
+  },
+  "ingredientes": ["ingrediente1", "ingrediente2", "..."],
+  "semaforo": "verde/amarillo/rojo",
+  "semaforo_razon": "Breve explicación del semáforo nutricional",
+  "beneficios": ["beneficio1", "beneficio2"],
+  "recomendaciones": "Recomendación personalizada de 2-3 líneas",
+  "momento_ideal": "Desayuno/Pre-entreno/Post-entreno/Almuerzo/Cena/Merienda"
+}`;
+
+  try {
+    // Usar llama-4-scout con vision via Groq
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + GROQ_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+        max_tokens: 1200,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'image_url',
+              image_url: { url: 'data:' + fotoMimeType + ';base64,' + fotoBase64 }
+            },
+            { type: 'text', text: prompt }
+          ]
+        }]
+      })
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error('Error ' + res.status + ': ' + errText);
+    }
+    const data = await res.json();
+    const raw = data.choices[0].message.content;
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Respuesta inválida de la IA');
+    const r = JSON.parse(jsonMatch[0]);
+
+    const semaforoColor = { 'verde': '#7fff00', 'amarillo': '#ffaa00', 'rojo': '#ff4444' };
+    const semaforoEmoji = { 'verde': '🟢', 'amarillo': '🟡', 'rojo': '🔴' };
+    const color = semaforoColor[r.semaforo] || '#7fff00';
+    const emoji = semaforoEmoji[r.semaforo] || '🟢';
+
+    const ingredientesHtml = (r.ingredientes || []).map(ing =>
+      `<span style="background:var(--surface2);border:1px solid var(--border);padding:3px 10px;border-radius:999px;font-size:.78rem;color:var(--text)">${ing}</span>`
+    ).join(' ');
+
+    const beneficiosHtml = (r.beneficios || []).map(b =>
+      `<div class="ai-tip-item"><span class="ai-tip-dot" style="color:var(--accent)">✓</span><span>${b}</span></div>`
+    ).join('');
+
+    document.getElementById('detectorContent').innerHTML = `
+      <!-- Header comida -->
+      <div class="ai-header" style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+          <div>
+            <div class="ai-header-title">🍽️ ${r.nombre_comida}</div>
+            <div class="ai-header-desc">${r.porcion_estimada} · Momento ideal: <strong style="color:var(--accent)">${r.momento_ideal}</strong></div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:1.8rem">${emoji}</div>
+            <div style="font-size:.7rem;color:var(--text-muted);text-transform:uppercase">${r.semaforo}</div>
+          </div>
+        </div>
+        <div style="margin-top:10px;padding:8px 12px;background:rgba(0,0,0,.2);border-radius:8px;font-size:.82rem;color:var(--text-muted);">${r.semaforo_razon}</div>
+      </div>
+
+      <!-- Calorías y macros -->
+      <div class="ai-cal-total" style="margin-bottom:12px;">
+        <div>
+          <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);">Calorías estimadas</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:2rem;font-weight:800;color:var(--warning);">${r.calorias} kcal</div>
+        </div>
+        <div style="font-size:.75rem;color:var(--text-muted);">Confianza: <strong style="color:var(--text)">${r.confianza}</strong></div>
+      </div>
+
+      <div class="ai-macros-grid" style="margin-bottom:14px;">
+        <div class="ai-macro-card">
+          <div class="ai-macro-value" style="color:var(--accent)">${r.macros.proteinas}</div>
+          <div class="ai-macro-label">💪 Proteínas</div>
+        </div>
+        <div class="ai-macro-card">
+          <div class="ai-macro-value" style="color:var(--info)">${r.macros.carbohidratos}</div>
+          <div class="ai-macro-label">⚡ Carbos</div>
+        </div>
+        <div class="ai-macro-card">
+          <div class="ai-macro-value" style="color:var(--warning)">${r.macros.grasas}</div>
+          <div class="ai-macro-label">🧈 Grasas</div>
+        </div>
+      </div>
+
+      <!-- Ingredientes -->
+      <div style="margin-bottom:14px;">
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:8px;">🧂 Ingredientes detectados</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">${ingredientesHtml}</div>
+      </div>
+
+      <!-- Beneficios -->
+      <div class="ai-tip-card" style="margin-bottom:12px;">
+        <div class="ai-tip-label">✅ Beneficios</div>
+        ${beneficiosHtml}
+      </div>
+
+      <!-- Recomendación -->
+      <div style="background:rgba(127,255,0,.06);border:1px solid rgba(127,255,0,.15);border-radius:12px;padding:14px 16px;margin-bottom:14px;">
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:6px;">💡 Recomendación</div>
+        <div style="font-size:.87rem;color:var(--text);line-height:1.6">${r.recomendaciones}</div>
+      </div>
+
+      <!-- Acciones -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="cambiarFoto()">📸 Analizar otra comida</button>
+        <button class="btn btn-secondary btn-sm" onclick="showScreen('nutricion-ia')">🥗 Ver Plan Nutricional</button>
+      </div>
+    `;
+
+    document.getElementById('detectorResultado').style.display = 'block';
+    showAlert('alertDetector', 'Análisis completado');
+  } catch(e) {
+    showAlert('alertDetector', 'Error al analizar: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🔍 Analizar Comida';
+  }
+}
+
+
+
+// ===== IMC Y PROGRESO =====
+function calcularIMC() {
+  const peso = parseFloat(document.getElementById('sal_peso').value);
+  const altura = parseFloat(document.getElementById('sal_altura').value);
+  const pesoObj = parseFloat(document.getElementById('sal_peso_obj').value);
+
+  if (!peso || !altura) {
+    document.getElementById('sal_imc_display').style.display = 'none';
+    document.getElementById('sal_progreso_box').style.display = 'none';
+    return;
+  }
+
+  const alturaM = altura / 100;
+  const imc = peso / (alturaM * alturaM);
+  const imcRedondeado = Math.round(imc * 10) / 10;
+
+  // Categoría y color
+  let categoria, color, posicion;
+  if (imc < 16)      { categoria = '⚠️ Delgadez severa';  color = '#ff4444'; posicion = 5;  }
+  else if (imc < 18.5){ categoria = '🔵 Bajo peso';        color = '#44aaff'; posicion = 15; }
+  else if (imc < 25)  { categoria = '✅ Peso normal';       color = '#7fff00'; posicion = 40; }
+  else if (imc < 30)  { categoria = '🟡 Sobrepeso';         color = '#ffaa00'; posicion = 62; }
+  else if (imc < 35)  { categoria = '🟠 Obesidad grado I';  color = '#ff7700'; posicion = 75; }
+  else if (imc < 40)  { categoria = '🔴 Obesidad grado II'; color = '#ff4444'; posicion = 88; }
+  else                { categoria = '🔴 Obesidad grado III';color = '#cc0000'; posicion = 96; }
+
+  document.getElementById('sal_imc_valor').textContent = imcRedondeado;
+  document.getElementById('sal_imc_valor').style.color = color;
+  document.getElementById('sal_imc_categoria').textContent = categoria;
+  document.getElementById('sal_imc_categoria').style.color = color;
+  document.getElementById('sal_imc_indicador').style.left = posicion + '%';
+  document.getElementById('sal_imc_indicador').style.background = color;
+
+  // Peso ideal (fórmula Lorentz)
+  const pesoIdealMin = Math.round((alturaM * alturaM * 18.5) * 10) / 10;
+  const pesoIdealMax = Math.round((alturaM * alturaM * 24.9) * 10) / 10;
+  document.getElementById('sal_peso_ideal').innerHTML =
+    'Peso ideal para tu altura: <strong style="color:var(--accent)">' + pesoIdealMin + ' – ' + pesoIdealMax + ' kg</strong>';
+
+  document.getElementById('sal_imc_display').style.display = 'block';
+
+  // Progreso hacia objetivo
+  if (pesoObj && !isNaN(pesoObj)) {
+    const bajando = pesoObj < peso;
+    const diff = Math.abs(peso - pesoObj);
+    const total = bajando ? peso - pesoObj : pesoObj - peso;
+
+    // Porcentaje completado (asumiendo que el peso actual es el punto de partida)
+    // Se calcula como: cuánto avanzó respecto al total que debe avanzar
+    // Sin historial: 0% al inicio, pero si ya llegó al objetivo: 100%
+    let pct = 0;
+    if (diff === 0) pct = 100;
+
+    document.getElementById('sal_progreso_box').style.display = 'block';
+    document.getElementById('prog_actual').textContent = peso;
+    document.getElementById('prog_objetivo').textContent = pesoObj;
+    document.getElementById('prog_barra').style.width = pct + '%';
+
+    const arrow = bajando ? '⬇️' : '⬆️';
+    const texto = diff === 0
+      ? '<strong style="color:var(--accent)">🎉 Objetivo alcanzado!</strong>'
+      : (bajando
+        ? arrow + ' Faltan <strong style="color:var(--warning)">' + diff.toFixed(1) + ' kg</strong> para llegar al objetivo 🎯'
+        : arrow + ' Necesitás ganar <strong style="color:var(--accent)">' + diff.toFixed(1) + ' kg</strong> para llegar al objetivo 💪');
+    document.getElementById('prog_texto').innerHTML = texto;
+
+    // Cambiar color de barra según dirección
+    document.getElementById('prog_barra').style.background =
+      bajando ? 'linear-gradient(90deg,#ff7700,#ffaa00)' : 'linear-gradient(90deg,#7fff00,#4caf50)';
+  } else {
+    document.getElementById('sal_progreso_box').style.display = 'none';
+  }
+}
+
+async function guardarPesoHistorial(uid, peso) {
+  try {
+    await sb.insert('gm_peso_historial', {
+      uid,
+      peso: parseFloat(peso),
+      fecha: new Date().toISOString().split('T')[0]
+    });
+  } catch(e) {
+    // La tabla puede no existir aún, ignorar silenciosamente
+    console.log('Historial no disponible');
+  }
+}
+
+// ===== CLIENTES ACCESO =====
+async function guardarClienteAcceso() {
+  const nombre = document.getElementById('ca_nombre').value.trim();
+  const usuario = document.getElementById('ca_usuario').value.trim().toLowerCase();
+  const pass = document.getElementById('ca_pass').value.trim();
+  const ref = document.getElementById('ca_ref').value.trim();
+
+  if (!usuario || !pass) return showAlert('alertClienteAcceso', 'Usuario y contraseña son requeridos', 'error');
+
+  // Validar que no exista
+  try {
+    const exist = await sb.select('gm_clientes', 'select=id&usuario=eq.' + encodeURIComponent(usuario));
+    if (exist && exist.length > 0) return showAlert('alertClienteAcceso', 'Ese usuario ya existe', 'error');
+  } catch(e) {}
+
+  showLoading(true);
+  try {
+    const passHash = btoa(pass + '_gm_salt');
+    await sb.insert('gm_clientes', { usuario, pass_hash: passHash, nombre, referencia: ref, activo: true });
+    showAlert('alertClienteAcceso', `✅ Acceso creado — Usuario: ${usuario} | Contraseña: ${pass}`);
+    document.getElementById('ca_nombre').value = '';
+    document.getElementById('ca_usuario').value = '';
+    document.getElementById('ca_pass').value = '';
+    document.getElementById('ca_ref').value = '';
+    cargarClientesAcceso();
+  } catch(e) {
+    showAlert('alertClienteAcceso', 'Error: ' + e.message, 'error');
+  } finally { showLoading(false); }
+}
+
+async function cargarClientesAcceso() {
+  showLoading(true);
+  try {
+    const clientes = await sb.select('gm_clientes', 'select=*&order=created_at.desc') || [];
+    const tbody = document.getElementById('clientesAccesoBody');
+    if (!clientes.length) {
+      tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><p>Sin clientes registrados</p></div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = clientes.map((c, i) => `
+      <tr>
+        <td>${i+1}</td>
+        <td><strong>${c.nombre || '-'}</strong></td>
+        <td><code style="color:var(--accent);font-size:.85rem">${c.usuario}</code></td>
+        <td>${c.referencia || '-'}</td>
+        <td>${c.activo
+          ? '<span class="badge badge-green">Activo</span>'
+          : '<span class="badge badge-red">Inactivo</span>'}</td>
+        <td>
+          <div class="td-actions">
+            <button class="btn btn-${c.activo ? 'danger' : 'secondary'} btn-sm"
+              onclick="toggleClienteAcceso(${c.id}, ${c.activo})">
+              ${c.activo ? '🚫 Desactivar' : '✅ Activar'}
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="eliminarClienteAcceso(${c.id})">🗑️</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    // Si la tabla no existe aún
+    document.getElementById('clientesAccesoBody').innerHTML =
+      '<tr><td colspan="6" style="color:var(--warning);padding:16px">⚠️ Ejecutá el SQL de la tabla gm_clientes primero</td></tr>';
+  } finally { showLoading(false); }
+}
+
+async function toggleClienteAcceso(id, activo) {
+  showLoading(true);
+  try {
+    await sb.update('gm_clientes', 'id=eq.' + id, { activo: !activo });
+    cargarClientesAcceso();
+  } catch(e) { alert('Error: ' + e.message); }
+  finally { showLoading(false); }
+}
+
+async function eliminarClienteAcceso(id) {
+  if (!confirm('¿Eliminar este acceso?')) return;
+  showLoading(true);
+  try {
+    await sb.delete('gm_clientes', 'id=eq.' + id);
+    cargarClientesAcceso();
+  } catch(e) { alert('Error: ' + e.message); }
+  finally { showLoading(false); }
+}
+
+
+// ===== HISTORIAL DE PESO =====
+async function verHistorialPeso(uid, nombre) {
+  document.getElementById('hist_uid').value = uid;
+  document.getElementById('historialNombre').textContent = '👤 ' + nombre;
+  document.getElementById('hist_fecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('hist_peso').value = '';
+  await cargarHistorialPeso(uid);
+  openModal('modalHistorialPeso');
+}
+
+async function cargarHistorialPeso(uid) {
+  try {
+    const historial = await sb.select('gm_peso_historial',
+      'select=*&uid=eq.' + uid + '&order=fecha.desc') || [];
+
+    if (!historial.length) {
+      document.getElementById('historialContent').innerHTML =
+        '<div style="text-align:center;color:var(--text-muted);padding:20px;font-size:.87rem;">Sin registros de peso aún</div>';
+      return;
+    }
+
+    // Calcular progreso
+    const primero = historial[historial.length - 1];
+    const ultimo = historial[0];
+    const diff = (parseFloat(ultimo.peso) - parseFloat(primero.peso)).toFixed(1);
+    const diffColor = diff < 0 ? '#7fff00' : diff > 0 ? '#ff7700' : 'var(--text-muted)';
+    const diffText = diff < 0 ? '↓ ' + Math.abs(diff) + ' kg bajados' : diff > 0 ? '↑ ' + diff + ' kg ganados' : 'Sin cambio';
+
+    const rows = historial.map((h, i) => {
+      const prev = historial[i + 1];
+      let cambio = '';
+      if (prev) {
+        const delta = (parseFloat(h.peso) - parseFloat(prev.peso)).toFixed(1);
+        const dc = delta < 0 ? '#7fff00' : delta > 0 ? '#ff4444' : 'var(--text-muted)';
+        cambio = '<span style="color:' + dc + ';font-size:.78rem;font-weight:700">' +
+                 (delta > 0 ? '+' : '') + delta + ' kg</span>';
+      }
+      return '<tr>' +
+        '<td>' + formatDate(h.fecha) + '</td>' +
+        '<td><strong style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem">' + h.peso + '</strong> <span style="color:var(--text-muted);font-size:.75rem">kg</span></td>' +
+        '<td>' + cambio + '</td>' +
+        '<td><button onclick="eliminarPesoHistorial(' + h.id + ','' + uid + '')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:.85rem;">🗑️</button></td>' +
+        '</tr>';
+    }).join('');
+
+    document.getElementById('historialContent').innerHTML =
+      '<div style="background:rgba(127,255,0,.08);border:1px solid rgba(127,255,0,.2);border-radius:10px;padding:12px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;">' +
+        '<div style="font-size:.82rem;color:var(--text-muted)">' + historial.length + ' registros · Desde ' + formatDate(primero.fecha) + '</div>' +
+        '<div style="font-weight:700;color:' + diffColor + '">' + diffText + '</div>' +
+      '</div>' +
+      '<div style="max-height:220px;overflow-y:auto;">' +
+        '<table style="width:100%">' +
+          '<thead><tr>' +
+            '<th style="font-size:.72rem">Fecha</th>' +
+            '<th style="font-size:.72rem">Peso</th>' +
+            '<th style="font-size:.72rem">Cambio</th>' +
+            '<th style="font-size:.72rem"></th>' +
+          '</tr></thead>' +
+          '<tbody>' + rows + '</tbody>' +
+        '</table>' +
+      '</div>';
+  } catch(e) {
+    document.getElementById('historialContent').innerHTML =
+      '<div style="color:var(--warning);padding:12px;font-size:.85rem;">⚠️ Ejecutá el SQL del historial de peso para activar esta función</div>';
+  }
+}
+
+async function agregarPesoHistorial() {
+  const uid = document.getElementById('hist_uid').value;
+  const peso = document.getElementById('hist_peso').value;
+  const fecha = document.getElementById('hist_fecha').value;
+  if (!peso || !fecha) return;
+  showLoading(true);
+  try {
+    await sb.insert('gm_peso_historial', { uid, peso: parseFloat(peso), fecha });
+    // Actualizar también el peso actual en gm_salud
+    const existing = await sb.select('gm_salud', 'select=id&uid=eq.' + uid);
+    if (existing && existing.length) {
+      await sb.update('gm_salud', 'uid=eq.' + uid, { peso: parseFloat(peso) });
+    }
+    document.getElementById('hist_peso').value = '';
+    await cargarHistorialPeso(uid);
+    loadEstadoSalud();
+  } catch(e) { alert('Error: ' + e.message); }
+  finally { showLoading(false); }
+}
+
+async function eliminarPesoHistorial(id, uid) {
+  showLoading(true);
+  try {
+    await sb.delete('gm_peso_historial', 'id=eq.' + id);
+    await cargarHistorialPeso(uid);
+  } catch(e) {}
+  finally { showLoading(false); }
+}
+
+// ===== GROQ CONFIG =====
+const GROQ_KEY = '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';
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
+
+async function callGroq(prompt) {
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + GROQ_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  if (!res.ok) throw new Error('Error Groq: ' + res.status);
+  const data = await res.json();
+  return data.choices[0].message.content;
+}
+
+// ===== RUTINA IA =====
+let rutinaIAData = null;
+let rutinaIAMiembroNombre = '';
+
+async function initRutinaIA() {
+  // Cargar miembros en select
+  try {
+    const miembros = await sb.select('gm_usuarios', 'select=userid,username&order=username.asc') || [];
+    const sel = document.getElementById('ria_miembro');
+    sel.innerHTML = '<option value="">-- Seleccionar miembro --</option>' +
+      miembros.map(m => `<option value="${m.userid}">${m.username}</option>`).join('');
+  } catch(e) {}
+  document.getElementById('rutinaIAResultado').style.display = 'none';
+  document.getElementById('rutinaIAContent').innerHTML = '';
+}
+
+async function generarRutinaIA() {
+  const uid = document.getElementById('ria_miembro').value;
+  const objetivo = document.getElementById('ria_objetivo').value;
+  const nivel = document.getElementById('ria_nivel').value;
+  const dias = document.getElementById('ria_dias').value;
+  const equipo = document.getElementById('ria_equipo').value;
+  const condicion = document.getElementById('ria_condicion').value;
+
+  if (!uid) return showAlert('alertRutinaIA', 'Seleccioná un miembro', 'error');
+
+  // Obtener datos de salud del miembro
+  let datosSalud = '';
+  try {
+    const salud = await sb.select('gm_salud', 'select=*&uid=eq.' + uid);
+    const u = await sb.select('gm_usuarios', 'select=username,gender,dob&userid=eq.' + uid);
+    if (salud && salud[0]) {
+      const s = salud[0];
+      datosSalud = `Peso: ${s.peso||'N/D'} kg, Altura: ${s.altura||'N/D'} cm, % Grasa: ${s.grasa||'N/D'}, Calorías diarias: ${s.calorias||'N/D'}`;
+    }
+    if (u && u[0]) rutinaIAMiembroNombre = u[0].username;
+  } catch(e) {}
+
+  const btn = document.getElementById('btnGenerarRutina');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Generando...';
+
+  const prompt = `Eres un entrenador personal experto. Genera una rutina de ejercicios semanal COMPLETA y DETALLADA en español para un miembro de gimnasio con estas características:
+
+- Nombre: ${rutinaIAMiembroNombre}
+- Objetivo: ${objetivo}
+- Nivel: ${nivel}
+- Días de entrenamiento por semana: ${dias}
+- Equipamiento: ${equipo}
+- Datos físicos: ${datosSalud || 'No disponibles'}
+- Condición especial: ${condicion || 'Ninguna'}
+
+FORMATO REQUERIDO (responde SOLO con este JSON, sin texto adicional, sin markdown):
+{
+  "nombre": "Nombre descriptivo de la rutina",
+  "descripcion": "Descripción breve del programa",
+  "dias": {
+    "Día 1": "Nombre del día: Lista detallada de ejercicios con series x repeticiones y descanso",
+    "Día 2": "...",
+    "Día 3": "...",
+    "Día 4": "...",
+    "Día 5": "...",
+    "Día 6": "..."
+  },
+  "consejos": "3-4 consejos importantes para este programa",
+  "calorias_estimadas": "Calorías aproximadas quemadas por sesión"
+}
+
+Solo incluye los días necesarios según los ${dias} días indicados.`;
+
+  try {
+    const respuesta = await callGroq(prompt);
+    const clean = respuesta.replace(/```json|```/g, '').trim();
+    rutinaIAData = JSON.parse(clean);
+
+    // Renderizar resultado
+    const diaIconos = ['💪','🏋️','🔥','⚡','🎯','🚀'];
+    const diasHtml = Object.entries(rutinaIAData.dias).map(([dia, ejercicios], idx) => {
+      // Separar ejercicios: primero por salto de línea, luego por patrones numéricos
+      let lineas = ejercicios.split('\n').map(l => l.trim()).filter(l => l.length > 3);
+      if (lineas.length <= 1) lineas = ejercicios.split(/(?=[0-9]+[.)\s]\s*[A-ZÁÉÍÓÚ])/g).map(l=>l.trim()).filter(l=>l.length>3);
+      if (lineas.length <= 1) lineas = ejercicios.split(/[;|]/).map(l=>l.trim()).filter(l=>l.length>3);
+      if (lineas.length <= 1) lineas = ejercicios.split(',').map(l=>l.trim()).filter(l=>l.length>5);
+
+      // Detectar grupos musculares para agrupar
+      const grupos = [];
+      let grupoActual = null;
+
+      lineas.forEach(linea => {
+        const texto = linea.replace(/^[-•*\d.)]+\s*/, '').trim();
+        if (!texto) return;
+
+        const esGrupo = /^(pecho|espalda|piernas|hombros|brazos|triceps|bíceps|biceps|abdomen|core|cardio|calentamiento|enfriamiento|glúteos|gluteos|cuádriceps|isquiotibiales)/i.test(texto);
+
+        if (esGrupo) {
+          grupoActual = { titulo: texto, ejercicios: [] };
+          grupos.push(grupoActual);
+        } else {
+          if (!grupoActual) {
+            grupoActual = { titulo: null, ejercicios: [] };
+            grupos.push(grupoActual);
+          }
+          grupoActual.ejercicios.push(texto);
+        }
+      });
+
+      // Si no detectó grupos, tratar todo como ejercicios directos
+      if (grupos.length === 0 || grupos.every(g => g.ejercicios.length === 0)) {
+        const ejerciciosSimples = lineas.map(linea => {
+          const texto = linea.replace(/^[-•*\d.)]+\s*/, '').trim();
+          if (!texto) return '';
+          const tf = texto
+            .replace(/(\d+\s*[xX×]\s*\d+[\w\s]*)/gi, '<strong style="color:var(--accent)">$1</strong>')
+            .replace(/(\d+\s*series?[\w\s,]*)/gi, '<strong style="color:var(--accent)">$1</strong>')
+            .replace(/(\d+\s*(?:seg|min|rep|kg|lb)[\w\s]*)/gi, '<strong style="color:var(--warning)">$1</strong>');
+          return `<div class="ai-exercise-item" style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+            <div class="ai-check" onclick="this.classList.toggle('checked')"></div>
+            <div class="ai-exercise-text">${tf}</div>
+          </div>`;
+        }).join('');
+        return `<div class="ai-day-card" style="margin-bottom:14px;">
+          <div class="ai-day-header">
+            <span class="ai-day-badge">${diaIconos[idx]||'🏋️'} ${dia}</span>
+          </div>
+          <div class="ai-day-body" style="padding:14px 16px;">${ejerciciosSimples||'<div style="color:var(--text-muted);padding:8px 0">🛌 Descanso activo</div>'}</div>
+        </div>`;
+      }
+
+      const gruposHtml = grupos.map(g => {
+        const tituloHtml = g.titulo ? `
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 0 6px;border-bottom:1px solid rgba(127,255,0,.15);margin-bottom:8px;">
+            <span style="font-size:.7rem;background:rgba(127,255,0,.15);color:var(--accent);padding:3px 8px;border-radius:999px;font-weight:800;text-transform:uppercase;letter-spacing:.06em">${g.titulo}</span>
+          </div>` : '';
+        const ejercHtml = g.ejercicios.map(ej => {
+          const tf = ej
+            .replace(/(\d+\s*[xX×]\s*\d+[\w\s]*)/gi, '<strong style="color:var(--accent)">$1</strong>')
+            .replace(/(\d+\s*series?[\w\s,]*)/gi, '<strong style="color:var(--accent)">$1</strong>')
+            .replace(/(\d+\s*(?:seg|min|rep|kg|lb)[\w\s]*)/gi, '<strong style="color:var(--warning)">$1</strong>');
+          return `<div class="ai-exercise-item" style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);">
+            <div class="ai-check" onclick="this.classList.toggle('checked')"></div>
+            <div class="ai-exercise-text" style="line-height:1.6">${tf}</div>
+          </div>`;
+        }).join('');
+        return tituloHtml + ejercHtml;
+      }).join('');
+
+      return `<div class="ai-day-card" style="margin-bottom:14px;">
+        <div class="ai-day-header">
+          <span class="ai-day-badge">${diaIconos[idx]||'🏋️'} ${dia}</span>
+        </div>
+        <div class="ai-day-body" style="padding:14px 16px;">${gruposHtml||'<div style="color:var(--text-muted);padding:8px 0">🛌 Descanso activo</div>'}</div>
+      </div>`;
+    }).join('');
+
+    const consejosArr = rutinaIAData.consejos.split('\n').filter(c => c.trim());
+    const consejosHtml = consejosArr.map(c => `
+      <div class="ai-tip-item">
+        <span class="ai-tip-dot">→</span>
+        <span>${c.replace(/^[-•*\d.)]\s*/, '').trim()}</span>
+      </div>`).join('');
+
+    document.getElementById('rutinaIAContent').innerHTML = `
+      <div class="ai-header">
+        <div class="ai-header-title">🏋️ ${rutinaIAData.nombre}</div>
+        <div class="ai-header-desc">${rutinaIAData.descripcion}</div>
+      </div>
+      ${diasHtml}
+      <div class="ai-tip-card">
+        <div class="ai-tip-label">💡 Consejos del entrenador</div>
+        ${consejosHtml}
+      </div>
+      <div class="ai-cal-card">
+        <div class="ai-cal-icon">🔥</div>
+        <div>
+          <div class="ai-cal-value">${rutinaIAData.calorias_estimadas}</div>
+          <div class="ai-cal-label">Calorías estimadas por sesión</div>
+        </div>
+      </div>
+    `;
+    document.getElementById('rutinaIAResultado').style.display = 'block';
+    showAlert('alertRutinaIA', 'Rutina generada exitosamente');
+  } catch(e) {
+    showAlert('alertRutinaIA', 'Error al generar: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🤖 Generar Rutina';
+  }
+}
+
+async function guardarRutinaIA() {
+  if (!rutinaIAData) return;
+  const dias = Object.values(rutinaIAData.dias);
+  showLoading(true);
+  try {
+    await sb.insert('gm_rutinas', {
+      nombre: rutinaIAData.nombre + ' (IA - ' + rutinaIAMiembroNombre + ')',
+      dia1: dias[0] || null,
+      dia2: dias[1] || null,
+      dia3: dias[2] || null,
+      dia4: dias[3] || null,
+      dia5: dias[4] || null,
+      dia6: dias[5] || null
+    });
+    showAlert('alertRutinaIA', 'Rutina guardada en el sistema ✅');
+  } catch(e) {
+    showAlert('alertRutinaIA', 'Error al guardar: ' + e.message, 'error');
+  } finally { showLoading(false); }
+}
+
+function descargarRutinaIAPDF() {
+  if (!rutinaIAData) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  let y = 20;
+
+  doc.setFillColor(15, 16, 16);
+  doc.rect(0, 0, 210, 297, 'F');
+
+  doc.setTextColor(127, 255, 0);
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('GYM MASTER - RUTINA IA', 105, y, { align: 'center' });
+  y += 10;
+
+  doc.setTextColor(200, 200, 200);
+  doc.setFontSize(14);
+  doc.text(rutinaIAData.nombre, 105, y, { align: 'center' });
+  y += 6;
+
+  doc.setFontSize(10);
+  doc.setTextColor(150, 150, 150);
+  doc.text('Miembro: ' + rutinaIAMiembroNombre + ' | ' + new Date().toLocaleDateString('es-CR'), 105, y, { align: 'center' });
+  y += 4;
+
+  doc.setDrawColor(127, 255, 0);
+  doc.line(15, y, 195, y);
+  y += 8;
+
+  doc.setFontSize(9);
+  doc.setTextColor(180, 180, 180);
+  const descLines = doc.splitTextToSize(rutinaIAData.descripcion, 180);
+  doc.text(descLines, 15, y);
+  y += descLines.length * 5 + 6;
+
+  Object.entries(rutinaIAData.dias).forEach(([dia, ejercicios]) => {
+    if (y > 260) { doc.addPage(); doc.setFillColor(15,16,16); doc.rect(0,0,210,297,'F'); y = 20; }
+    doc.setFillColor(30, 40, 30);
+    doc.roundedRect(13, y - 4, 184, 8, 2, 2, 'F');
+    doc.setTextColor(127, 255, 0);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(dia, 15, y + 1);
+    y += 10;
+    doc.setTextColor(210, 210, 210);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    const lines = doc.splitTextToSize(ejercicios, 175);
+    lines.forEach(line => {
+      if (y > 270) { doc.addPage(); doc.setFillColor(15,16,16); doc.rect(0,0,210,297,'F'); y = 20; }
+      doc.text(line, 17, y);
+      y += 5;
+    });
+    y += 4;
+  });
+
+  if (y > 250) { doc.addPage(); doc.setFillColor(15,16,16); doc.rect(0,0,210,297,'F'); y = 20; }
+  doc.setFillColor(20, 30, 20);
+  doc.roundedRect(13, y - 4, 184, 8, 2, 2, 'F');
+  doc.setTextColor(0, 200, 255);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Consejos', 15, y + 1);
+  y += 10;
+  doc.setTextColor(200, 200, 200);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  const consLines = doc.splitTextToSize(rutinaIAData.consejos, 175);
+  doc.text(consLines, 17, y);
+
+  doc.save('rutina-ia-' + rutinaIAMiembroNombre.replace(/\s/g,'-') + '.pdf');
+}
+
+
+// ===== GENERAR NUTRICION DESDE RUTINA =====
+async function generarNutricionDesdeRutina() {
+  if (!rutinaIAData) return;
+
+  const uid = document.getElementById('ria_miembro').value;
+  const objetivo = document.getElementById('ria_objetivo').value;
+  const nivel = document.getElementById('ria_nivel').value;
+  const dias = document.getElementById('ria_dias').value;
+
+  // Mapear objetivo de rutina a objetivo nutricional
+  const objNutricion = {
+    'pérdida de peso': 'pérdida de peso',
+    'ganancia muscular': 'ganancia muscular',
+    'fuerza': 'ganancia muscular',
+    'resistencia cardiovascular': 'rendimiento deportivo',
+    'tonificación': 'mantenimiento',
+    'salud general': 'mantenimiento'
+  };
+
+  // Cargar datos del miembro automáticamente
+  let peso = '', altura = '', edad = '', genero = 'Hombre', restricciones = '';
+  try {
+    const u = await sb.select('gm_usuarios', 'select=username,gender,dob&userid=eq.' + uid);
+    const s = await sb.select('gm_salud', 'select=*&uid=eq.' + uid);
+    if (u && u[0]) {
+      nutricionIAMiembroNombre = u[0].username;
+      genero = u[0].gender || 'Hombre';
+      if (u[0].dob) edad = new Date().getFullYear() - new Date(u[0].dob).getFullYear();
+    }
+    if (s && s[0]) {
+      peso = s[0].peso || '';
+      altura = s[0].altura || '';
+    }
+  } catch(e) {}
+
+  // Nivel actividad según dias de entrenamiento
+  const actividadMap = { '3': 'ligero (1-3 días/semana)', '4': 'moderado (3-5 días/semana)', '5': 'moderado (3-5 días/semana)', '6': 'intenso (6-7 días/semana)' };
+  const actividad = actividadMap[dias] || 'moderado (3-5 días/semana)';
+
+  const btn = document.getElementById('btnGenerarRutina');
+  const btnOrigText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Generando nutrición...';
+
+  const prompt = `Eres un nutricionista deportivo experto. Genera un plan nutricional semanal COMPLETO en español para un cliente de gimnasio con estas características:
+
+- Nombre: ${nutricionIAMiembroNombre}
+- Rutina asignada: ${rutinaIAData.nombre}
+- Objetivo: ${objNutricion[objetivo] || objetivo}
+- Nivel de entrenamiento: ${nivel}
+- Días de entrenamiento: ${dias} días/semana
+- Edad: ${edad || 'N/D'} años
+- Género: ${genero}
+- Peso: ${peso || 'N/D'} kg
+- Altura: ${altura || 'N/D'} cm
+- Nivel de actividad: ${actividad}
+- Restricciones: ${restricciones || 'Ninguna'}
+
+El plan debe estar SINCRONIZADO con la rutina de entrenamiento. En los días de entrenamiento aumentar carbohidratos pre-entreno y proteínas post-entreno.
+
+FORMATO REQUERIDO (responde SOLO con este JSON, sin texto adicional, sin markdown):
+{
+  "calorias_diarias": "número aproximado",
+  "macros": {
+    "proteinas": "gramos y porcentaje",
+    "carbohidratos": "gramos y porcentaje",
+    "grasas": "gramos y porcentaje"
+  },
+  "plan_semanal": {
+    "Lunes": "Desayuno: ...|Almuerzo: ...|Merienda: ...|Cena: ...",
+    "Martes": "Desayuno: ...|Almuerzo: ...|Merienda: ...|Cena: ...",
+    "Miércoles": "Desayuno: ...|Almuerzo: ...|Merienda: ...|Cena: ...",
+    "Jueves": "Desayuno: ...|Almuerzo: ...|Merienda: ...|Cena: ...",
+    "Viernes": "Desayuno: ...|Almuerzo: ...|Merienda: ...|Cena: ...",
+    "Sábado": "Desayuno: ...|Almuerzo: ...|Merienda: ...|Cena: ...",
+    "Domingo": "Desayuno: ...|Almuerzo: ...|Merienda: ...|Cena: ..."
+  },
+  "suplementos": "Suplementos recomendados con dosis y momento del día",
+  "hidratacion": "Recomendación de agua diaria",
+  "consejos": "3-4 consejos nutricionales importantes para este programa específico"
+}`;
+
+  try {
+    const respuesta = await callGroq(prompt);
+    const clean = respuesta.replace(/```json|```/g, '').trim();
+    nutricionIAData = JSON.parse(clean);
+
+    // Mostrar resultado debajo de la rutina
+    const diasHtml = Object.entries(nutricionIAData.plan_semanal).map(([dia, comidas]) => {
+      const comidasArr = comidas.split('|');
+      return `
+        <div class="info-chip" style="margin-bottom:10px;">
+          <div class="info-chip-label" style="color:var(--accent)">${dia}</div>
+          ${comidasArr.map(c => `<div class="info-chip-value" style="font-size:.85rem;padding:3px 0;border-bottom:1px solid var(--border)">${c.trim()}</div>`).join('')}
+        </div>`;
+    }).join('');
+
+    // Crear sección nutrición debajo del resultado de rutina
+    let nutriBox = document.getElementById('nutricionEnRutina');
+    if (!nutriBox) {
+      nutriBox = document.createElement('div');
+      nutriBox.id = 'nutricionEnRutina';
+      document.getElementById('rutinaIAContent').after(nutriBox);
+    }
+    nutriBox.innerHTML = `
+      <div style="border-top:2px solid rgba(127,255,0,.3);margin-top:20px;padding-top:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.3rem;font-weight:800;color:var(--accent);">🥗 Plan Nutricional — ${nutricionIAMiembroNombre}</div>
+          <button class="btn btn-primary btn-sm" onclick="descargarNutricionPDF()">📄 PDF Nutrición</button>
+        </div>
+        ${renderNutricionCompleto(nutricionIAData)}
+      </div>`;
+
+    showAlert('alertRutinaIA', 'Plan nutricional generado y enlazado a la rutina ✅');
+  } catch(e) {
+    showAlert('alertRutinaIA', 'Error al generar nutrición: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = btnOrigText;
+  }
+}
+
+// ===== NUTRICION IA =====
+let nutricionIAData = null;
+let nutricionIAMiembroNombre = '';
+
+async function initNutricionIA() {
+  try {
+    const miembros = await sb.select('gm_usuarios', 'select=userid,username&order=username.asc') || [];
+    const sel = document.getElementById('nia_miembro');
+    sel.innerHTML = '<option value="">-- Seleccionar miembro --</option>' +
+      miembros.map(m => `<option value="${m.userid}">${m.username}</option>`).join('');
+  } catch(e) {}
+  document.getElementById('nutricionIAResultado').style.display = 'none';
+}
+
+async function cargarDatosSaludNutricion(uid) {
+  if (!uid) return;
+  try {
+    const u = await sb.select('gm_usuarios', 'select=username,gender,dob&userid=eq.' + uid);
+    const s = await sb.select('gm_salud', 'select=*&uid=eq.' + uid);
+    if (u && u[0]) {
+      nutricionIAMiembroNombre = u[0].username;
+      document.getElementById('nia_genero').value = u[0].gender || 'Hombre';
+      if (u[0].dob) {
+        const edad = new Date().getFullYear() - new Date(u[0].dob).getFullYear();
+        document.getElementById('nia_edad').value = edad;
+      }
+    }
+    if (s && s[0]) {
+      if (s[0].peso) document.getElementById('nia_peso').value = s[0].peso;
+      if (s[0].altura) document.getElementById('nia_altura').value = s[0].altura;
+    }
+  } catch(e) {}
+}
+
+async function generarNutricionIA() {
+  const uid = document.getElementById('nia_miembro').value;
+  const objetivo = document.getElementById('nia_objetivo').value;
+  const edad = document.getElementById('nia_edad').value;
+  const genero = document.getElementById('nia_genero').value;
+  const peso = document.getElementById('nia_peso').value;
+  const altura = document.getElementById('nia_altura').value;
+  const actividad = document.getElementById('nia_actividad').value;
+  const restricciones = document.getElementById('nia_restricciones').value;
+
+  if (!uid) return showAlert('alertNutricionIA', 'Seleccioná un miembro', 'error');
+  if (!peso || !altura) return showAlert('alertNutricionIA', 'Ingresá peso y altura', 'error');
+
+  const btn = document.getElementById('btnGenerarNutricion');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Generando...';
+
+  const prompt = `Eres un nutricionista deportivo experto. Genera un plan nutricional semanal COMPLETO en español para un cliente de gimnasio con estas características:
+
+- Nombre: ${nutricionIAMiembroNombre}
+- Objetivo: ${objetivo}
+- Edad: ${edad || 'N/D'} años
+- Género: ${genero}
+- Peso: ${peso} kg
+- Altura: ${altura} cm
+- Nivel de actividad: ${actividad}
+- Restricciones: ${restricciones || 'Ninguna'}
+
+FORMATO REQUERIDO (responde SOLO con este JSON, sin texto adicional, sin markdown):
+{
+  "calorias_diarias": "número aproximado",
+  "macros": {
+    "proteinas": "gramos y porcentaje",
+    "carbohidratos": "gramos y porcentaje",
+    "grasas": "gramos y porcentaje"
+  },
+  "plan_semanal": {
+    "Lunes": "Desayuno: ...|Almuerzo: ...|Merienda: ...|Cena: ...",
+    "Martes": "Desayuno: ...|Almuerzo: ...|Merienda: ...|Cena: ...",
+    "Miércoles": "Desayuno: ...|Almuerzo: ...|Merienda: ...|Cena: ...",
+    "Jueves": "Desayuno: ...|Almuerzo: ...|Merienda: ...|Cena: ...",
+    "Viernes": "Desayuno: ...|Almuerzo: ...|Merienda: ...|Cena: ...",
+    "Sábado": "Desayuno: ...|Almuerzo: ...|Merienda: ...|Cena: ...",
+    "Domingo": "Desayuno: ...|Almuerzo: ...|Merienda: ...|Cena: ..."
+  },
+  "suplementos": "Suplementos recomendados con dosis",
+  "hidratacion": "Recomendación de agua diaria",
+  "consejos": "3-4 consejos nutricionales importantes"
+}`;
+
+  try {
+    const respuesta = await callGroq(prompt);
+    const clean = respuesta.replace(/```json|```/g, '').trim();
+    nutricionIAData = JSON.parse(clean);
+
+    const diasHtml = Object.entries(nutricionIAData.plan_semanal).map(([dia, comidas]) => {
+      const comidasArr = comidas.split('|');
+      return `
+        <div class="info-chip" style="margin-bottom:10px;">
+          <div class="info-chip-label" style="color:var(--accent)">${dia}</div>
+          ${comidasArr.map(c => `<div class="info-chip-value" style="font-size:.85rem;padding:3px 0;border-bottom:1px solid var(--border)">${c.trim()}</div>`).join('')}
+        </div>
+      `;
+    }).join('');
+
+    document.getElementById("nutricionIAContent").innerHTML = renderNutricionCompleto(nutricionIAData);
+    document.getElementById('nutricionIAResultado').style.display = 'block';
+    showAlert('alertNutricionIA', 'Plan nutricional generado exitosamente');
+  } catch(e) {
+    showAlert('alertNutricionIA', 'Error al generar: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🥗 Generar Plan';
+  }
+}
+
+function descargarNutricionPDF() {
+  if (!nutricionIAData) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  let y = 20;
+
+  doc.setFillColor(10, 15, 10);
+  doc.rect(0, 0, 210, 297, 'F');
+
+  doc.setTextColor(127, 255, 0);
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('GYM MASTER - PLAN NUTRICIONAL', 105, y, { align: 'center' });
+  y += 8;
+
+  doc.setTextColor(200, 200, 200);
+  doc.setFontSize(12);
+  doc.text('Miembro: ' + nutricionIAMiembroNombre, 105, y, { align: 'center' });
+  y += 6;
+
+  doc.setTextColor(150, 150, 150);
+  doc.setFontSize(9);
+  doc.text('Generado: ' + new Date().toLocaleDateString('es-CR'), 105, y, { align: 'center' });
+  y += 4;
+
+  doc.setDrawColor(127, 255, 0);
+  doc.line(15, y, 195, y);
+  y += 8;
+
+  // Macros
+  doc.setFillColor(20, 35, 20);
+  doc.roundedRect(13, y-3, 184, 22, 3, 3, 'F');
+  doc.setTextColor(255, 170, 0);
+  doc.setFontSize(11);
+  doc.text('🔥 ' + nutricionIAData.calorias_diarias + ' kcal/día', 105, y+4, {align:'center'});
+  doc.setFontSize(8);
+  doc.setTextColor(127, 255, 0);
+  doc.text('Proteínas: ' + nutricionIAData.macros.proteinas, 25, y+13);
+  doc.setTextColor(0, 200, 255);
+  doc.text('Carbos: ' + nutricionIAData.macros.carbohidratos, 90, y+13);
+  doc.setTextColor(255, 200, 50);
+  doc.text('Grasas: ' + nutricionIAData.macros.grasas, 155, y+13);
+  y += 28;
+
+  Object.entries(nutricionIAData.plan_semanal).forEach(([dia, comidas]) => {
+    if (y > 255) { doc.addPage(); doc.setFillColor(10,15,10); doc.rect(0,0,210,297,'F'); y = 20; }
+    doc.setFillColor(25, 40, 25);
+    doc.roundedRect(13, y-3, 184, 7, 2, 2, 'F');
+    doc.setTextColor(127, 255, 0);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(dia, 15, y+1);
+    y += 9;
+    const comidasArr = comidas.split('|');
+    comidasArr.forEach(c => {
+      if (y > 275) { doc.addPage(); doc.setFillColor(10,15,10); doc.rect(0,0,210,297,'F'); y = 20; }
+      doc.setTextColor(200, 200, 200);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      const lines = doc.splitTextToSize(c.trim(), 175);
+      doc.text(lines, 17, y);
+      y += lines.length * 4 + 2;
+    });
+    y += 4;
+  });
+
+  // Suplementos y consejos
+  if (y > 240) { doc.addPage(); doc.setFillColor(10,15,10); doc.rect(0,0,210,297,'F'); y = 20; }
+  doc.setDrawColor(127,255,0);
+  doc.line(15, y, 195, y);
+  y += 6;
+  doc.setTextColor(255, 170, 0);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Suplementos Recomendados', 15, y);
+  y += 6;
+  doc.setTextColor(200,200,200);
+  doc.setFontSize(8);
+  doc.setFont('helvetica','normal');
+  const supLines = doc.splitTextToSize(nutricionIAData.suplementos, 175);
+  doc.text(supLines, 15, y);
+  y += supLines.length * 4 + 6;
+
+  doc.setTextColor(0,200,255);
+  doc.setFontSize(10);
+  doc.setFont('helvetica','bold');
+  doc.text('Consejos', 15, y);
+  y += 6;
+  doc.setTextColor(200,200,200);
+  doc.setFontSize(8);
+  doc.setFont('helvetica','normal');
+  const consLines = doc.splitTextToSize(nutricionIAData.consejos, 175);
+  doc.text(consLines, 15, y);
+
+  doc.save('nutricion-ia-' + nutricionIAMiembroNombre.replace(/\s/g,'-') + '.pdf');
+}
+
+// ===== INIT =====
+document.getElementById('loadingOverlay').classList.add('hidden');
+
+// Set filtros por mes/año actuales
+window.addEventListener('DOMContentLoaded', () => {
+  const now = new Date();
+  document.getElementById('filtroMes').value = now.getMonth() + 1;
+  document.getElementById('filtroAnio').value = now.getFullYear();
+  document.getElementById('filtroMesIng').value = now.getMonth() + 1;
+  document.getElementById('filtroAnioIng').value = now.getFullYear();
+  document.getElementById('filtroAnioFull').value = now.getFullYear();
+});
+</script>
+</body>
+</html>
