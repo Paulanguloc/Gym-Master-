@@ -2240,49 +2240,39 @@ function buildChip(label, value) {
 
 // ===== DASHBOARD =====
 async function loadDashboard() {
-  try {
-    const now = new Date();
-    const ym = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
-    const mesStart = ym + '-01';
-    const mesEnd = ym + '-31';
+  const now = new Date();
+  const ym = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  const mesStart = ym + '-01';
+  const mesEnd = ym + '-31';
 
-    // Miembros totales - traer todos y contar
+  // Cada stat independiente para que un error no bloquee los demás
+  try {
     const miembros = await sb.select('gm_usuarios', 'select=userid') || [];
     document.getElementById('statMiembros').textContent = miembros.length;
+  } catch(e) { document.getElementById('statMiembros').textContent = '0'; }
 
-    // Nuevos este mes
+  try {
     const nuevos = await sb.select('gm_usuarios',
-      `select=userid&joining_date=gte.${mesStart}&joining_date=lte.${mesEnd}`) || [];
+      'select=userid&joining_date=gte.' + mesStart + '&joining_date=lte.' + mesEnd) || [];
     document.getElementById('statNuevos').textContent = nuevos.length;
+  } catch(e) { document.getElementById('statNuevos').textContent = '0'; }
 
-    // Planes activos
+  try {
     const planes = await sb.select('gm_planes', 'select=pid&activo=eq.true') || [];
     document.getElementById('statPlanes').textContent = planes.length;
+  } catch(e) { document.getElementById('statPlanes').textContent = '0'; }
 
-    // Ingresos este mes - traer pagos y sumar con plan del caché
+  try {
+    const todosPlanes = await sb.select('gm_planes', 'select=pid,costo') || [];
     const pagos = await sb.select('gm_pagos',
-      `select=pid&paid_date=gte.${mesStart}&paid_date=lte.${mesEnd}`) || [];
+      'select=pid&paid_date=gte.' + mesStart + '&paid_date=lte.' + mesEnd) || [];
     let total = 0;
     pagos.forEach(p => {
-      const plan = planesCache.find(pl => pl.pid === p.pid);
-      if (plan) total += plan.costo || 0;
+      const plan = todosPlanes.find(pl => pl.pid === p.pid);
+      if (plan) total += parseFloat(plan.costo) || 0;
     });
-    // Si no hay cache de planes, intentar traer los precios directo
-    if (total === 0 && pagos.length > 0) {
-      const todosPlanes = await sb.select('gm_planes', 'select=pid,costo') || [];
-      pagos.forEach(p => {
-        const plan = todosPlanes.find(pl => pl.pid === p.pid);
-        if (plan) total += plan.costo || 0;
-      });
-    }
     document.getElementById('statIngresos').textContent = '₡' + total.toLocaleString('es-CR');
-  } catch(e) {
-    console.error('Error dashboard:', e.message);
-    document.getElementById('statMiembros').textContent = '!';
-    document.getElementById('statNuevos').textContent = '!';
-    document.getElementById('statPlanes').textContent = '!';
-    document.getElementById('statIngresos').textContent = 'Error';
-  }
+  } catch(e) { document.getElementById('statIngresos').textContent = '₡0'; }
 }
 
 // ===== PLANES =====
@@ -4325,3 +4315,4 @@ window.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
+
