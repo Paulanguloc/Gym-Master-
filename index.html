@@ -2531,11 +2531,13 @@ function updatePlanInfo() {
   const pid = document.getElementById('mp_plan').value;
   const plan = planesCache.find(p => p.pid === pid);
   if (plan) {
-    document.getElementById('mp_plan_detail').innerHTML = `
-      <div class="info-chip" style="margin-bottom:0">
-        <div class="info-chip-label">Vencimiento estimado</div>
-        <div class="info-chip-value" style="color:var(--accent)">${addMonths(document.getElementById('mp_fecha').value, plan.meses)}</div>
-      </div>`;
+    const fechaVal = document.getElementById('mp_fecha').value;
+    const vencEst = addMonths(fechaVal, plan.meses);
+    document.getElementById('mp_plan_detail').innerHTML =
+      '<div class="info-chip" style="margin-bottom:0">' +
+        '<div class="info-chip-label">Vencimiento estimado</div>' +
+        '<div class="info-chip-value" style="color:var(--accent)">' + vencEst + '</div>' +
+      '</div>';
   }
 }
 
@@ -2801,41 +2803,37 @@ async function loadEstadoSalud() {
       if (s.peso && s.peso_objetivo) {
         const diff = Math.abs(parseFloat(s.peso) - parseFloat(s.peso_objetivo));
         const bajando = parseFloat(s.peso_objetivo) < parseFloat(s.peso);
-        const pct = Math.max(0, Math.min(100, 100 - (diff / parseFloat(s.peso)) * 100));
         const barColor = bajando ? '#ff7700' : '#7fff00';
-        progresoHtml = \`<div style="min-width:90px">
-          <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:3px;">${bajando ? '↓' : '↑'} Obj: <strong style="color:var(--accent)">\${s.peso_objetivo}kg</strong></div>
-          <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
-            <div style="width:\${pct.toFixed(0)}%;height:100%;background:\${barColor};border-radius:3px;"></div>
-          </div>
-          <div style="font-size:.7rem;color:var(--text-muted);margin-top:2px;">Faltan \${diff.toFixed(1)} kg</div>
-        </div>\`;
+        const arrow = bajando ? '↓' : '↑';
+        progresoHtml = '<div style="min-width:90px">' +
+          '<div style="font-size:.75rem;color:var(--text-muted);margin-bottom:3px;">' + arrow + ' Obj: <strong style="color:var(--accent)">' + s.peso_objetivo + 'kg</strong></div>' +
+          '<div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;">' +
+            '<div style="width:30%;height:100%;background:' + barColor + ';border-radius:3px;"></div>' +
+          '</div>' +
+          '<div style="font-size:.7rem;color:var(--text-muted);margin-top:2px;">Faltan ' + diff.toFixed(1) + ' kg</div>' +
+        '</div>';
       }
 
-      const pesoTexto = s.peso ? \`<strong style="color:var(--text)">\${s.peso}</strong> <span style="color:var(--text-muted);font-size:.75rem">kg</span>\` : '-';
-      const alturaTexto = s.altura ? \`\${s.altura} <span style="color:var(--text-muted);font-size:.75rem">cm</span>\` : '-';
-      const grasaTexto = s.grasa ? \`\${s.grasa}<span style="color:var(--text-muted);font-size:.75rem">%</span>\` : '-';
-      const objetivoTexto = s.objetivo ? \`<span style="font-size:.78rem;background:rgba(127,255,0,.1);color:var(--accent);padding:2px 7px;border-radius:999px;">\${s.objetivo}</span>\` : '-';
+      const pesoTexto = s.peso ? '<strong style="color:var(--text)">' + s.peso + '</strong> <span style="color:var(--text-muted);font-size:.75rem">kg</span>' : '-';
+      const alturaTexto = s.altura ? s.altura + ' <span style="color:var(--text-muted);font-size:.75rem">cm</span>' : '-';
+      const grasaTexto = s.grasa ? s.grasa + '<span style="color:var(--text-muted);font-size:.75rem">%</span>' : '-';
+      const objetivoTexto = s.objetivo ? '<span style="font-size:.78rem;background:rgba(127,255,0,.1);color:var(--accent);padding:2px 7px;border-radius:999px;">' + s.objetivo + '</span>' : '-';
 
-      return \`<tr>
-        <td>\${i+1}</td>
-        <td>
-          <div style="font-weight:600">\${m.username}</div>
-          <div style="font-size:.75rem;color:var(--text-muted)">\${m.mobile || ''}</div>
-        </td>
-        <td>\${pesoTexto}</td>
-        <td>\${alturaTexto}</td>
-        <td><strong style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;color:\${imcColor}">\${imcTexto}</strong></td>
-        <td><span style="font-size:.78rem;font-weight:700;color:\${imcCatColor}">\${imcCat}</span></td>
-        <td>\${objetivoTexto}</td>
-        <td>\${progresoHtml}</td>
-        <td>\${grasaTexto}</td>
-        <td>
-          <button class="btn btn-secondary btn-sm" onclick="abrirSalud('\${m.userid}','\${m.username}','\${m.dob || ''}','\${m.joining_date || ''}','\${m.gender || ''}')">
-            ✏️ Editar
-          </button>
-        </td>
-      </tr>\`;
+      return '<tr>' +
+        '<td>' + (i+1) + '</td>' +
+        '<td><div style="font-weight:600">' + m.username + '</div><div style="font-size:.75rem;color:var(--text-muted)">' + (m.mobile || '') + '</div></td>' +
+        '<td>' + pesoTexto + '</td>' +
+        '<td>' + alturaTexto + '</td>' +
+        '<td><strong style="font-family:\'Barlow Condensed\',sans-serif;font-size:1.1rem;color:' + imcColor + '">' + imcTexto + '</strong></td>' +
+        '<td><span style="font-size:.78rem;font-weight:700;color:' + imcCatColor + '">' + imcCat + '</span></td>' +
+        '<td>' + objetivoTexto + '</td>' +
+        '<td>' + progresoHtml + '</td>' +
+        '<td>' + grasaTexto + '</td>' +
+        '<td><div class="td-actions">' +
+          '<button class="btn btn-secondary btn-sm" onclick="abrirSalud(\'' + m.userid + '\',\'' + m.username + '\',\'' + (m.dob||'') + '\',\'' + (m.joining_date||'') + '\',\'' + (m.gender||'') + '\')">✏️</button>' +
+          '<button class="btn btn-secondary btn-sm" onclick="verHistorialPeso(\'' + m.userid + '\',\'' + m.username + '\')" style="border-color:rgba(127,255,0,.3);color:var(--accent)">📈</button>' +
+        '</div></td>' +
+      '</tr>';
     }).join('');
   } catch(e) {
     console.error('Error salud:', e);
@@ -3621,9 +3619,9 @@ async function cargarHistorialPeso(uid) {
       }
       return '<tr>' +
         '<td>' + formatDate(h.fecha) + '</td>' +
-        '<td><strong style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem">' + h.peso + '</strong> <span style="color:var(--text-muted);font-size:.75rem">kg</span></td>' +
+        '<td><strong style="font-family:Arial,sans-serif;font-size:1.1rem">' + h.peso + '</strong> <span style="color:var(--text-muted);font-size:.75rem">kg</span></td>' +
         '<td>' + cambio + '</td>' +
-        '<td><button onclick="eliminarPesoHistorial(' + h.id + ','' + uid + '')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:.85rem;">🗑️</button></td>' +
+        '<td><button onclick="eliminarPesoHistorial(' + h.id + ',\'' + uid + '\')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:.85rem;">🗑️</button></td>' +
         '</tr>';
     }).join('');
 
