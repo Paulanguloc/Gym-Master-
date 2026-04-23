@@ -1733,6 +1733,8 @@ tr:last-child td { border-bottom: none; }
       <div class="form-group"><label>Género</label>
         <select class="form-control" id="em_genero"><option>Hombre</option><option>Mujer</option></select>
       </div>
+      <div class="form-group"><label>Fecha de Nacimiento</label><input type="date" class="form-control" id="em_dob"></div>
+      <div class="form-group"><label>Dirección</label><input type="text" class="form-control" id="em_direccion"></div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-primary" onclick="guardarEdicionMiembro()">Guardar</button>
@@ -1775,7 +1777,7 @@ tr:last-child td { border-bottom: none; }
     <div id="sal_info" style="margin-bottom:14px;font-size:.87rem;color:var(--text-muted);padding:10px;background:var(--surface2);border-radius:8px;"></div>
 
     <!-- IMC en tiempo real -->
-    <div id="sal_imc_display" style="display:none;margin-bottom:16px;">
+    <div id="sal_imc_display" style="display:block;margin-bottom:16px;">
       <div style="background:var(--surface2);border-radius:14px;padding:16px;border:1px solid var(--border);">
         <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:10px;">📊 IMC en tiempo real</div>
         <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
@@ -1802,9 +1804,13 @@ tr:last-child td { border-bottom: none; }
       <div class="form-group"><label>Altura (cm)</label><input type="number" class="form-control" id="sal_altura" oninput="calcularIMC()" placeholder="170"></div>
       <div class="form-group"><label>Peso objetivo (kg)</label><input type="number" class="form-control" id="sal_peso_obj" step="0.1" placeholder="65"></div>
       <div class="form-group"><label>% Grasa corporal</label><input type="number" class="form-control" id="sal_grasa" step="0.1" placeholder="20"></div>
-      <div class="form-group"><label>Calorías diarias</label><input type="number" class="form-control" id="sal_cal" placeholder="2000"></div>
+      <div class="form-group">
+        <label>Calorías diarias <span id="cal_auto_btn" onclick="calcularCalorias()" style="cursor:pointer;color:var(--accent);font-size:.75rem;margin-left:6px;">⚡ Calcular auto</span></label>
+        <input type="number" class="form-control" id="sal_cal" placeholder="2000">
+        <div id="cal_hint" style="font-size:.75rem;color:var(--text-muted);margin-top:4px;"></div>
+      </div>
       <div class="form-group"><label>Objetivo principal</label>
-        <select class="form-control" id="sal_objetivo">
+        <select class="form-control" id="sal_objetivo" onchange="calcularIMC()">
           <option value="">-- Seleccionar --</option>
           <option value="pérdida de peso">🔥 Pérdida de peso</option>
           <option value="ganancia muscular">💪 Ganancia muscular</option>
@@ -2243,7 +2249,8 @@ async function loadDashboard() {
   const now = new Date();
   const ym = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
   const mesStart = ym + '-01';
-  const mesEnd = ym + '-31';
+  const lastDay = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  const mesEnd = ym + '-' + String(lastDay).padStart(2,'0');
 
   // Cada stat independiente para que un error no bloquee los demás
   try {
@@ -2592,7 +2599,13 @@ function renderMiembrosTable(data) {
       <td>${m.email || '-'}</td>
       <td>${m.gender || '-'}</td>
       <td>${formatDate(m.joining_date)}</td>
-      <td><button class="btn btn-secondary btn-sm" onclick="verDetalleMiembro('${m.userid}')">👁 Ver Todo</button></td>
+      <td>
+        <div class="td-actions">
+          <button class="btn btn-secondary btn-sm" onclick="verDetalleMiembro('${m.userid}')">👁</button>
+          <button class="btn btn-secondary btn-sm" onclick="abrirEditarMiembro('${m.userid}')" style="border-color:rgba(127,255,0,.3);color:var(--accent)">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="confirmarEliminarMiembro('${m.userid}')">🗑️</button>
+        </div>
+      </td>
     </tr>`;
   }).join('');
 }
@@ -2720,6 +2733,8 @@ function _fillEditarModal(m) {
   document.getElementById('em_tel').value = m.mobile || '';
   document.getElementById('em_email').value = m.email || '';
   document.getElementById('em_genero').value = m.gender || 'Hombre';
+  document.getElementById('em_dob').value = m.dob || '';
+  document.getElementById('em_direccion').value = m.street_name || '';
 }
 
 async function guardarEdicionMiembro() {
@@ -2731,7 +2746,9 @@ async function guardarEdicionMiembro() {
   if (!nombre) return showAlert('alertEditarMiembro', 'El nombre es requerido', 'error');
   showLoading(true);
   try {
-    await sb.update('gm_usuarios', 'userid=eq.' + uid, { username: nombre, mobile: tel, email, gender: genero });
+    const dob = document.getElementById('em_dob').value || null;
+    const direccion = document.getElementById('em_direccion').value || null;
+    await sb.update('gm_usuarios', 'userid=eq.' + uid, { username: nombre, mobile: tel, email, gender: genero, dob, street_name: direccion });
     closeModal('modalEditarMiembro');
     loadEditarMiembros();
   } catch(e) {
@@ -2853,8 +2870,11 @@ async function abrirSalud(uid, nombre, dob, join, genero) {
       document.getElementById('sal_objetivo').value = '';
     }
   } catch(e) {}
-  calcularIMC();
   openModal('modalSalud');
+  // Calcular IMC y auto-rellenar grasa/calorías
+  setTimeout(function() {
+    calcularIMC();
+  }, 200);
 }
 
 async function guardarSalud() {
@@ -2893,34 +2913,48 @@ async function cargarMiembrosMes() {
   const anio = document.getElementById('filtroAnio').value;
   showLoading(true);
   try {
-    const data = await sb.select('gm_usuarios', `select=*,gm_pagos(gm_planes(nombre))&gm_pagos.renewal=eq.true&joining_date=gte.${anio}-${mes}-01&joining_date=lte.${anio}-${mes}-31&order=joining_date.asc`) || [];
+    const data = await sb.select('gm_usuarios',
+      'select=*&joining_date=gte.' + anio + '-' + mes + '-01&joining_date=lte.' + anio + '-' + mes + '-' + String(new Date(parseInt(anio), parseInt(mes), 0).getDate()).padStart(2,'0') + '&order=joining_date.asc') || [];
     const tbody = document.getElementById('miembrosMesBody');
-    if (!data.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><p>Sin datos para este mes</p></div></td></tr>'; return; }
-    tbody.innerHTML = data.map((m, i) => `
-      <tr>
-        <td>${i+1}</td>
-        <td><code style="font-size:.8rem;color:var(--accent)">${m.userid}</code></td>
-        <td>${m.username}</td>
-        <td>${m.gender || '-'}</td>
-        <td>${m.mobile || '-'}</td>
-        <td>${formatDate(m.joining_date)}</td>
-        <td>${m.gm_pagos?.[0]?.gm_planes?.nombre || '-'}</td>
-      </tr>
-    `).join('');
-  } catch(e) {} finally { showLoading(false); }
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><p>Sin miembros ingresados en este mes</p></div></td></tr>'; return; }
+    tbody.innerHTML = data.map((m, i) =>
+      '<tr>' +
+        '<td>' + (i+1) + '</td>' +
+        '<td><code style="font-size:.8rem;color:var(--accent)">' + m.userid + '</code></td>' +
+        '<td><strong>' + m.username + '</strong></td>' +
+        '<td>' + (m.gender||'-') + '</td>' +
+        '<td>' + (m.mobile||'-') + '</td>' +
+        '<td>' + formatDate(m.joining_date) + '</td>' +
+        '<td>-</td>' +
+      '</tr>'
+    ).join('');
+  } catch(e) {
+    document.getElementById('miembrosMesBody').innerHTML = '<tr><td colspan="7" style="color:var(--danger);padding:12px">Error: ' + e.message + '</td></tr>';
+  } finally { showLoading(false); }
 }
 
 async function cargarMiembrosAnio() {
   const anio = document.getElementById('filtroAnioFull').value;
   showLoading(true);
   try {
-    const data = await sb.select('gm_usuarios', `select=*,gm_pagos(gm_planes(nombre))&gm_pagos.renewal=eq.true&joining_date=gte.${anio}-01-01&joining_date=lte.${anio}-12-31&order=joining_date.asc`) || [];
+    const data = await sb.select('gm_usuarios',
+      'select=*&joining_date=gte.' + anio + '-01-01&joining_date=lte.' + anio + '-12-31&order=joining_date.asc') || [];
     const tbody = document.getElementById('miembrosAnioBody');
     if (!data.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><p>Sin datos para este año</p></div></td></tr>'; return; }
-    tbody.innerHTML = data.map((m, i) => `
-      <tr><td>${i+1}</td><td><code style="font-size:.8rem;color:var(--accent)">${m.userid}</code></td><td>${m.username}</td><td>${m.gender||'-'}</td><td>${m.mobile||'-'}</td><td>${formatDate(m.joining_date)}</td><td>${m.gm_pagos?.[0]?.gm_planes?.nombre||'-'}</td></tr>
-    `).join('');
-  } catch(e) {} finally { showLoading(false); }
+    tbody.innerHTML = data.map((m, i) =>
+      '<tr>' +
+        '<td>' + (i+1) + '</td>' +
+        '<td><code style="font-size:.8rem;color:var(--accent)">' + m.userid + '</code></td>' +
+        '<td><strong>' + m.username + '</strong></td>' +
+        '<td>' + (m.gender||'-') + '</td>' +
+        '<td>' + (m.mobile||'-') + '</td>' +
+        '<td>' + formatDate(m.joining_date) + '</td>' +
+        '<td>-</td>' +
+      '</tr>'
+    ).join('');
+  } catch(e) {
+    document.getElementById('miembrosAnioBody').innerHTML = '<tr><td colspan="7" style="color:var(--danger);padding:12px">Error: ' + e.message + '</td></tr>';
+  } finally { showLoading(false); }
 }
 
 async function cargarIngresosMes() {
@@ -2928,25 +2962,43 @@ async function cargarIngresosMes() {
   const anio = document.getElementById('filtroAnioIng').value;
   showLoading(true);
   try {
-    const data = await sb.select('gm_pagos', `select=*,gm_usuarios(username,mobile,gender),gm_planes(nombre,costo,meses)&paid_date=gte.${anio}-${mes}-01&paid_date=lte.${anio}-${mes}-31&order=paid_date.asc`) || [];
+    // Traer pagos del mes
+    const pagos = await sb.select('gm_pagos',
+      'select=*&paid_date=gte.' + anio + '-' + mes + '-01&paid_date=lte.' + anio + '-' + mes + '-' + String(new Date(parseInt(anio), parseInt(mes), 0).getDate()).padStart(2,'0') + '&order=paid_date.asc') || [];
     const tbody = document.getElementById('ingresosMesBody');
-    if (!data.length) { tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><p>Sin datos para este mes</p></div></td></tr>'; document.getElementById('totalIngresos').textContent = ''; return; }
+    if (!pagos.length) {
+      tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><p>Sin pagos en este mes</p></div></td></tr>';
+      document.getElementById('totalIngresos').textContent = '';
+      return;
+    }
+    // Traer usuarios y planes por separado
+    const usuarios = await sb.select('gm_usuarios', 'select=userid,username,mobile,gender') || [];
+    const planes = await sb.select('gm_planes', 'select=pid,nombre,costo,meses') || [];
+    const usuMap = {}; usuarios.forEach(u => usuMap[u.userid] = u);
+    const planMap = {}; planes.forEach(p => planMap[p.pid] = p);
+
     let total = 0;
-    tbody.innerHTML = data.map((p, i) => {
-      const u = p.gm_usuarios || {};
-      const pl = p.gm_planes || {};
-      total += pl.costo || 0;
-      return `<tr>
-        <td>${i+1}</td><td><code style="font-size:.8rem;color:var(--accent)">${p.uid}</code></td>
-        <td>${u.username||'-'}</td><td>${u.mobile||'-'}</td><td>${u.gender||'-'}</td>
-        <td>${formatDate(p.paid_date)}</td><td>${formatDate(p.expire)}</td>
-        <td>${pl.nombre||'-'}</td>
-        <td style="color:var(--accent);font-weight:700">₡${(pl.costo||0).toLocaleString('es-CR')}</td>
-        <td>${pl.meses||'-'} mes${(pl.meses||0)>1?'es':''}</td>
-      </tr>`;
+    tbody.innerHTML = pagos.map((p, i) => {
+      const u = usuMap[p.uid] || {};
+      const pl = planMap[p.pid] || {};
+      total += parseFloat(pl.costo) || 0;
+      return '<tr>' +
+        '<td>' + (i+1) + '</td>' +
+        '<td><code style="font-size:.8rem;color:var(--accent)">' + p.uid + '</code></td>' +
+        '<td>' + (u.username||'-') + '</td>' +
+        '<td>' + (u.mobile||'-') + '</td>' +
+        '<td>' + (u.gender||'-') + '</td>' +
+        '<td>' + formatDate(p.paid_date) + '</td>' +
+        '<td>' + formatDate(p.expire) + '</td>' +
+        '<td>' + (pl.nombre||'-') + '</td>' +
+        '<td style="color:var(--accent);font-weight:700">&#x20a1;' + (parseFloat(pl.costo)||0).toLocaleString('es-CR') + '</td>' +
+        '<td>' + (pl.meses||'-') + ' mes' + ((pl.meses||0)>1?'es':'') + '</td>' +
+      '</tr>';
     }).join('');
-    document.getElementById('totalIngresos').textContent = `Total: ₡${total.toLocaleString('es-CR')}`;
-  } catch(e) {} finally { showLoading(false); }
+    document.getElementById('totalIngresos').textContent = 'Total: ₡' + total.toLocaleString('es-CR');
+  } catch(e) {
+    document.getElementById('ingresosMesBody').innerHTML = '<tr><td colspan="10" style="color:var(--danger);padding:12px">Error: ' + e.message + '</td></tr>';
+  } finally { showLoading(false); }
 }
 
 // ===== RUTINAS =====
@@ -3409,6 +3461,30 @@ function calcularIMC() {
     return;
   }
 
+  // ---- AUTO-CALCULAR CALORÍAS (Harris-Benedict TDEE) ----
+  const objetivo = document.getElementById('sal_objetivo').value;
+  const infoText = document.getElementById('sal_info').textContent || '';
+  const esMujer = infoText.toLowerCase().includes('mujer');
+  // BMR base (sin edad exacta usamos 30 como promedio)
+  const bmr = esMujer
+    ? 655 + (9.6 * peso) + (1.8 * altura) - (4.7 * 30)
+    : 66 + (13.7 * peso) + (5 * altura) - (6.8 * 30);
+  const tdee = Math.round(bmr * 1.55); // actividad moderada
+  let cals = tdee;
+  if (objetivo === 'pérdida de peso') cals = tdee - 500;
+  else if (objetivo === 'ganancia muscular' || objetivo === 'fuerza') cals = tdee + 300;
+  // Solo autocompletar si el campo está vacío
+  const calField = document.getElementById('sal_cal');
+  if (!calField.value) calField.value = cals;
+
+  // ---- AUTO-CALCULAR % GRASA (estimación Deurenberg) ----
+  const altM2 = altura / 100;
+  const imcTemp = peso / (altM2 * altM2);
+  const edadAprox = 30;
+  const grasaEst = (1.20 * imcTemp) + (0.23 * edadAprox) - (10.8 * (esMujer ? 0 : 1)) - 5.4;
+  const grasaField = document.getElementById('sal_grasa');
+  if (!grasaField.value) grasaField.value = Math.max(5, Math.round(grasaEst * 10) / 10);
+
   const alturaM = altura / 100;
   const imc = peso / (alturaM * alturaM);
   const imcRedondeado = Math.round(imc * 10) / 10;
@@ -3469,6 +3545,39 @@ function calcularIMC() {
   } else {
     document.getElementById('sal_progreso_box').style.display = 'none';
   }
+}
+
+function calcularCalorias() {
+  const peso = parseFloat(document.getElementById('sal_peso').value);
+  const altura = parseFloat(document.getElementById('sal_altura').value);
+  const objetivo = document.getElementById('sal_objetivo').value;
+  const genero = document.getElementById('sal_info').textContent.includes('Mujer') ? 'Mujer' : 'Hombre';
+
+  if (!peso || !altura) {
+    document.getElementById('cal_hint').textContent = 'Ingresá peso y altura primero';
+    return;
+  }
+
+  // Harris-Benedict BMR
+  let bmr;
+  if (genero === 'Mujer') {
+    bmr = 655 + (9.6 * peso) + (1.8 * altura) - (4.7 * 30);
+  } else {
+    bmr = 66 + (13.7 * peso) + (5 * altura) - (6.8 * 30);
+  }
+
+  // Factor actividad moderado
+  const tdee = Math.round(bmr * 1.55);
+  let cals = tdee;
+  let hint = '';
+
+  if (objetivo === 'pérdida de peso') { cals = tdee - 500; hint = 'Déficit -500 kcal para bajar ~0.5kg/semana'; }
+  else if (objetivo === 'ganancia muscular') { cals = tdee + 300; hint = 'Superávit +300 kcal para ganar músculo'; }
+  else if (objetivo === 'fuerza') { cals = tdee + 200; hint = 'Superávit moderado para fuerza'; }
+  else { hint = 'Mantenimiento según actividad moderada'; }
+
+  document.getElementById('sal_cal').value = cals;
+  document.getElementById('cal_hint').textContent = hint + ' (' + cals + ' kcal/día)';
 }
 
 async function guardarPesoHistorial(uid, peso) {
@@ -4315,4 +4424,3 @@ window.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
-
